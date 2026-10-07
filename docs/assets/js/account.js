@@ -200,21 +200,32 @@
     const hint = $('#aiHint');
     if (!hint) return;
     const p = cfg.provider || 'pollinations';
-    if (p !== 'pollinations' && !cfg.key) {
+    if (p === 'pollinations' && cfg.key) {
+      hint.textContent = 'A key is saved but the provider is still "pollinations". Pick Groq or Gemini, then press Save.';
+    } else if (p !== 'pollinations' && !cfg.key) {
       hint.textContent = 'Add an API key for ' + p + ', then press Save.';
+    } else if (p === 'pollinations') {
+      hint.textContent = 'pollinations needs no key, but it is often down. Groq or Gemini with a free key is far more reliable.';
     } else {
-      hint.textContent = 'Ready: ' + p + (cfg.key ? ' (key saved on this device)' : ' (no key needed)') +
-        '. The chatbot uses this when the backend is not connected.';
+      hint.textContent = 'Ready: ' + p + ' (key saved on this device). The chatbot uses this when no backend is connected.';
     }
   }
 
   const aiSave = $('#aiSaveBtn');
   if (aiSave) aiSave.addEventListener('click', () => {
-    SS.setAI({
-      provider: aiProvider ? aiProvider.value : 'pollinations',
-      key: aiKey ? aiKey.value.trim() : '',
-      model: ''
-    });
+    const key = aiKey ? aiKey.value.trim() : '';
+    let provider = aiProvider ? aiProvider.value : 'pollinations';
+    // If a key was pasted but the provider is still the (often-down) default,
+    // switch to whichever provider that key belongs to.
+    if (key && provider === 'pollinations') {
+      const guess = SS.detectProvider(key);
+      if (guess) {
+        provider = guess;
+        if (aiProvider) aiProvider.value = guess;
+        SS.toast('Detected a ' + guess + ' key - provider set to ' + guess, 'ok');
+      }
+    }
+    SS.setAI({ provider, key, model: '' });
     paintAI();
     SS.toast('AI settings saved on this device', 'ok');
   });
@@ -223,13 +234,13 @@
   if (aiTest) aiTest.addEventListener('click', async () => {
     const hint = $('#aiHint');
     if (hint) hint.textContent = 'Asking the assistant\u2026';
-    const reply = await SS.askDirect('Reply with exactly: OK');
+    const res = await SS.askDirectDebug('Reply with exactly: OK');
     if (hint) {
-      hint.textContent = reply
-        ? 'Working. The assistant replied: ' + String(reply).slice(0, 80)
-        : 'No reply from ' + (SS.getAI().provider || 'pollinations') + '. Check the key, or try another provider.';
+      hint.textContent = res.reply
+        ? 'Working. The assistant replied: ' + String(res.reply).slice(0, 80)
+        : 'Failed: ' + (res.error || 'no reply') + '  (provider: ' + (SS.getAI().provider || 'pollinations') + ')';
     }
-    SS.toast(reply ? 'AI assistant is working' : 'AI assistant did not respond', reply ? 'ok' : 'err');
+    SS.toast(res.reply ? 'AI assistant is working' : 'AI assistant failed', res.reply ? 'ok' : 'err');
   });
   paintAI();
 

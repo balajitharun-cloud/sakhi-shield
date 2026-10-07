@@ -261,7 +261,19 @@
   SS.getAI = () => SS.store.get('ss_ai', { provider: 'pollinations', key: '', model: '' });
   SS.setAI = (v) => SS.store.set('ss_ai', v);
 
-  async function askDirect(msg) {
+  // Guess the provider from the shape of the key, so a pasted key "just works".
+  function detectProvider(key) {
+    const k = String(key || '').trim();
+    if (/^gsk_/.test(k)) return 'groq';
+    if (/^AIza/.test(k)) return 'gemini';
+    if (/^sk-or-/.test(k)) return 'openrouter';
+    if (/^sk-/.test(k)) return 'openai';
+    return null;
+  }
+  SS.detectProvider = detectProvider;
+
+  // Returns { reply } on success or { error } with a human-readable reason.
+  async function directCall(msg) {
     const cfg = SS.getAI();
     const provider = cfg.provider || 'pollinations';
     const key = String(cfg.key || '').trim();
@@ -269,20 +281,27 @@
     const langName = { en: 'English', hi: 'Hindi', kn: 'Kannada' }[LANG] || 'English';
     const system = AI_SYSTEM + ' Reply in ' + langName + '.';
 
+    if (provider !== 'pollinations' && !key) {
+      return { error: 'No API key saved for ' + provider + '. Paste the key and press Save.' };
+    }
+    if (provider === 'pollinations' && key) {
+      return { error: 'A key is saved but the provider is still "pollinations". Choose Groq or Gemini and press Save.' };
+    }
+
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 25000);
+    const bad = (status, detail) => ({ error: provider + ' returned HTTP ' + status + (detail ? ' - ' + detail : '') });
     try {
       if (provider === 'pollinations') {
         const url = 'https://text.pollinations.ai/' +
           encodeURIComponent(system + '\n\n' + msg) + '?model=' + encodeURIComponent(model || 'openai');
         const r = await fetch(url, { signal: ctrl.signal });
-        if (!r.ok) return null;
+        if (!r.ok) return bad(r.status);
         const t = await r.text();
-        return t ? t.trim() : null;
+        return t ? { reply: t.trim() } : { error: 'pollinations returned an empty reply.' };
       }
 
       if (provider === 'gemini') {
-        if (!key) return null;
         const url = 'https://generativelanguage.googleapis.com/v1beta/models/' +
           (model || 'gemini-1.5-flash') + ':generateContent?key=' + encodeURIComponent(key);
         const r = await fetch(url, {
@@ -294,11 +313,11 @@
           }),
           signal: ctrl.signal
         });
-        if (!r.ok) return null;
-        const d = await r.json();
+        const d = await r.json().catch(() => null);
+        if (!r.ok) return bad(r.status, d && d.error && d.error.message);
         const c = d && d.candidates && d.candidates[0] && d.candidates[0].content;
         const t = c && c.parts && c.parts[0] && c.parts[0].text;
-        return t ? String(t).trim() : null;
+        return t ? { reply: String(t).trim() } : { error: 'Gemini returned no text.' };
       }
 
       const urls = {
@@ -312,7 +331,7 @@
         openrouter: 'meta-llama/llama-3.1-8b-instruct:free'
       };
       const url = urls[provider];
-      if (!url || !key) return null;
+      if (!url) return { error: 'Unknown provider: ' + provider };
       const r = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key },
@@ -324,17 +343,19 @@
         }),
         signal: ctrl.signal
       });
-      if (!r.ok) return null;
-      const d = await r.json();
+      const d = await r.json().catch(() => null);
+      if (!r.ok) return bad(r.status, d && d.error && d.error.message);
       const t = d && d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content;
-      return t ? String(t).trim() : null;
+      return t ? { reply: String(t).trim() } : { error: provider + ' returned no text.' };
     } catch (e) {
-      return null;
+      return { error: (e && e.name === 'AbortError') ? 'Timed out after 25s.' : 'Network error: ' + (e && e.message) };
     } finally {
       clearTimeout(timer);
     }
   }
-  SS.askDirect = askDirect;
+
+  SS.askDirect = async function (msg) { const r = await directCall(msg); return r.reply || null; };
+  SS.askDirectDebug = directCall;
 
   SS.renderChips = function () {
     const host = $('#chatChips');

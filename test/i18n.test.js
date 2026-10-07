@@ -179,6 +179,29 @@ async function main() {
     };
     check((await win.SS.askDirect('hi')) === 'GEMINI OK', 'supports the Gemini response shape');
     check(captured && captured.includes('generativelanguage.googleapis.com'), 'uses the Gemini endpoint');
+
+    // provider detection from the shape of the key
+    check(win.SS.detectProvider('gsk_abc') === 'groq', 'detects a Groq key');
+    check(win.SS.detectProvider('AIzaSy123') === 'gemini', 'detects a Gemini key');
+    check(win.SS.detectProvider('sk-or-v1-x') === 'openrouter', 'detects an OpenRouter key');
+    check(win.SS.detectProvider('sk-abc') === 'openai', 'detects an OpenAI key');
+    check(win.SS.detectProvider('nonsense') === null, 'returns null for an unrecognised key');
+
+    // key saved but the provider left on the default
+    win.SS.setAI({ provider: 'pollinations', key: 'gsk_abc', model: '' });
+    const mixed = await win.SS.askDirectDebug('hi');
+    check(/provider is still/i.test(mixed.error || ''), 'explains when a key is set but the provider is still pollinations');
+
+    // a failing HTTP response must surface the real reason
+    win.SS.setAI({ provider: 'groq', key: 'bad', model: '' });
+    win.fetch = async () => ({ ok: false, status: 401, json: async () => ({ error: { message: 'Invalid API Key' } }) });
+    const bad = await win.SS.askDirectDebug('hi');
+    check(/401/.test(bad.error || '') && /Invalid API Key/.test(bad.error || ''), 'reports the real HTTP status and message');
+
+    // a missing key is explained, not silent
+    win.SS.setAI({ provider: 'groq', key: '', model: '' });
+    const nokey = await win.SS.askDirectDebug('hi');
+    check(/No API key saved/i.test(nokey.error || ''), 'explains when no key is saved');
   }
   {
     const { doc } = await load('index.html');
