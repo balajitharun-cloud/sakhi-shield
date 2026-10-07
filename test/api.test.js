@@ -42,6 +42,37 @@ async function main() {
       const chunks = [];
       res.on('data', (c) => chunks.push(c));
       res.on('end', () => {
+        const buffer = Buffer.concat(chunks);
+        const text = buffer.toString('utf8');
+        let json = null;
+        try { json = JSON.parse(text); } catch (e) { /* non-JSON */ }
+        resolve({ status: res.statusCode, data: json, text, buffer, contentType: res.headers['content-type'] });
+      });
+    });
+    r.on('error', reject);
+    if (payload) r.write(payload);
+    r.end();
+  });
+
+  // multipart/form-data, built by hand (undici's fetch is unreliable here)
+  const upload = (method, url, fields, file, token) => new Promise((resolve, reject) => {
+    const b = '----sakhitest' + Math.random().toString(16).slice(2);
+    const parts = [];
+    Object.keys(fields || {}).forEach((k) => {
+      parts.push(Buffer.from('--' + b + '\r\nContent-Disposition: form-data; name="' + k + '"\r\n\r\n' + fields[k] + '\r\n'));
+    });
+    parts.push(Buffer.from('--' + b + '\r\nContent-Disposition: form-data; name="file"; filename="' + file.filename +
+      '"\r\nContent-Type: ' + file.mime + '\r\n\r\n'));
+    parts.push(file.data);
+    parts.push(Buffer.from('\r\n--' + b + '--\r\n'));
+    const body = Buffer.concat(parts);
+    const u = new URL(url);
+    const headers = { 'Content-Type': 'multipart/form-data; boundary=' + b, 'Content-Length': body.length };
+    if (token) headers.Authorization = 'Bearer ' + token;
+    const r = http.request({ hostname: u.hostname, port: u.port, path: u.pathname, method, headers }, (res) => {
+      const chunks = [];
+      res.on('data', (c) => chunks.push(c));
+      res.on('end', () => {
         const text = Buffer.concat(chunks).toString('utf8');
         let json = null;
         try { json = JSON.parse(text); } catch (e) { /* non-JSON */ }
@@ -49,7 +80,7 @@ async function main() {
       });
     });
     r.on('error', reject);
-    if (payload) r.write(payload);
+    r.write(body);
     r.end();
   });
 
@@ -193,6 +224,60 @@ async function main() {
 
     r = await call('DELETE', `/api/complaints/${complaintId}`, null, token);
     check(r.status === 200, 'delete a complaint sheet');
+
+    console.log('\ncloud files + FIR PDF');
+    r = await call('POST', '/api/fir', { name: 'Tharun', place: 'MG Road', description: 'Followed from the bus stop.', ref: 'SS-TEST-1' }, token);
+    check(r.status === 201 && r.data.file.kind === 'pdf', 'generates an F.I.R. PDF and stores it in the cloud');
+    check(r.data.file.size > 1000, 'the PDF has real content (' + r.data.file.size + ' bytes)');
+    check(!r.data.warning, 'no script warning for Latin text');
+    const pdfId = r.data.file.id;
+
+    const dl = await raw('GET', base + '/api/files/' + pdfId + '/download', null, token);
+    check(dl.status === 200, 'downloads the stored PDF');
+    check(dl.text.startsWith('%PDF'), 'the download really is a PDF');
+    check(/application\/pdf/.test(dl.contentType || ''), 'served with the PDF content type');
+
+    r = await call('POST', '/api/fir', { place: 'somewhere' }, token);
+    check(r.status === 400, 'the F.I.R. PDF requires a complainant name');
+
+    r = await call('POST', '/api/fir', { name: 'Tharun', description: '\u0915\u0941\u091b \u0939\u0941\u0906' }, token);
+    check(r.status === 201 && !!r.data.warning, 'warns when the text uses a non-Latin script');
+
+    const up = await upload('POST', base + '/api/files', { kind: 'photo', note: 'evidence test' },
+      { filename: 'x.jpg', mime: 'image/jpeg', data: Buffer.from('fake-jpeg-bytes') }, token);
+    check(up.status === 201 && up.data.file.kind === 'photo', 'uploads a camera/evidence file to the cloud');
+    const fileId = up.data.file.id;
+
+    const dl2 = await raw('GET', base + '/api/files/' + fileId + '/download', null, token);
+    check(dl2.status === 200 && dl2.buffer.toString() === 'fake-jpeg-bytes', 'downloads the uploaded bytes intact');
+
+    const audioUp = await upload('POST', base + '/api/files', { kind: 'audio' },
+      { filename: 'v.webm', mime: 'audio/webm', data: Buffer.from('audio-bytes') }, token);
+    check(audioUp.status === 201 && audioUp.data.file.kind === 'audio', 'uploads a voice recording to the cloud');
+
+    r = await call('GET', '/api/files', null, token);
+    check(r.status === 200 && r.data.files.length === 4, 'lists every cloud file');
+    check(r.data.stats.n === 4 && r.data.stats.bytes > 0, 'reports file stats');
+    check(r.data.maxBytes > 0, 'reports the upload size limit');
+
+    const bad = await upload('POST', base + '/api/files', {},
+      { filename: 'x.exe', mime: 'application/x-msdownload', data: Buffer.from('MZ') }, token);
+    check(bad.status === 400, 'rejects an unsupported file type');
+
+    r = await call('GET', '/api/files');
+    check(r.status === 401, 'cloud files require auth (401)');
+
+    r = await call('DELETE', '/api/files/' + fileId, null, token);
+    check(r.status === 200, 'deletes a cloud file');
+
+    r = await call('GET', '/api/files', null, token);
+    check(r.data.files.length === 3, 'the deleted file is gone from the list');
+
+    // another user must not reach these files
+    r = await call('POST', '/api/auth/register', { name: 'Nosy', email: 'nosy@example.com', password: 'secret123' });
+    const token3 = r.data.token;
+    r = await call('GET', '/api/files/' + pdfId + '/download', null, token3);
+    check(r.status === 404, "another user cannot download someone else's file");
 
     console.log('\nstatic frontend + isolation');
     const home = await raw('GET', base + '/');

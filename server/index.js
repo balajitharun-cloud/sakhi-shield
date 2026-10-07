@@ -9,11 +9,13 @@ const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 
 const dbApi = require('./db');
-const { users, contacts, reports, alerts, complaints } = dbApi;
+const { users, contacts, reports, alerts, complaints, files } = dbApi;
 const auth = require('./auth');
 const { notifyContacts, emailConfigured, smsConfigured } = require('./notify');
 const { sharePage } = require('./sharePage');
 const chat = require('./chat');
+const store = require('./files');
+const { buildFirPdf, hasNonLatin } = require('./firPdf');
 
 const app = express();
 app.set('trust proxy', 1); // Render terminates TLS in front of us
@@ -260,6 +262,125 @@ app.get('/s/:token', (req, res, next) => {
     if (!alert) return res.status(404).send(sharePage(null));
     const user = users.findById(alert.user_id);
     res.type('html').send(sharePage({ token: req.params.token, owner: user ? user.name : 'Someone' }));
+  } catch (e) { next(e); }
+});
+
+/* ================= CLOUD FILES (evidence + documents) ================= */
+const fsx = require('fs');
+const pathx = require('path');
+
+// multer errors (too large, wrong type) should come back as clean JSON
+function uploadOne(req, res, next) {
+  store.upload.single('file')(req, res, (err) => {
+    if (err) {
+      const msg = err.code === 'LIMIT_FILE_SIZE'
+        ? 'That file is too large. The limit is ' + Math.round(store.MAX_BYTES / 1048576) + ' MB.'
+        : err.message;
+      return res.status(400).json({ error: msg });
+    }
+    next();
+  });
+}
+
+function publicFile(f) {
+  return {
+    id: f.id, kind: f.kind, name: f.name, mime: f.mime, size: f.size,
+    note: f.note, lat: f.lat, lng: f.lng, createdAt: f.created_at,
+    downloadUrl: '/api/files/' + f.id + '/download'
+  };
+}
+
+app.get('/api/files', auth.requireAuth, (req, res, next) => {
+  try {
+    res.json({
+      files: files.list(req.user.id).map(publicFile),
+      stats: files.stats(req.user.id),
+      maxBytes: store.MAX_BYTES
+    });
+  } catch (e) { next(e); }
+});
+
+app.post('/api/files', auth.requireAuth, uploadOne, (req, res, next) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'No file was received.' });
+    const kind = store.normaliseKind(req.body.kind, req.file.mimetype);
+    const row = files.create(req.user.id, {
+      kind,
+      name: store.safeName(req.file.originalname, kind + '-upload'),
+      mime: req.file.mimetype,
+      size: req.file.size,
+      storedAs: req.file.filename,
+      note: clean(req.body.note, 300),
+      lat: Number.isFinite(Number(req.body.lat)) && req.body.lat !== '' ? Number(req.body.lat) : null,
+      lng: Number.isFinite(Number(req.body.lng)) && req.body.lng !== '' ? Number(req.body.lng) : null
+    });
+    res.status(201).json({ file: publicFile(row) });
+  } catch (e) { next(e); }
+});
+
+app.get('/api/files/:id/download', auth.requireAuth, (req, res, next) => {
+  try {
+    const row = files.findById(req.user.id, Number(req.params.id));
+    if (!row) return res.status(404).json({ error: 'File not found.' });
+    const full = pathx.join(store.UPLOAD_DIR, pathx.basename(row.stored_as));
+    if (!fsx.existsSync(full)) {
+      return res.status(410).json({ error: 'That file is no longer on the server (storage is ephemeral on the free tier).' });
+    }
+    res.type(row.mime || 'application/octet-stream');
+    res.setHeader('Content-Disposition', 'attachment; filename="' + row.name.replace(/"/g, '') + '"');
+    fsx.createReadStream(full).pipe(res);
+  } catch (e) { next(e); }
+});
+
+app.delete('/api/files/:id', auth.requireAuth, (req, res, next) => {
+  try {
+    const row = files.findById(req.user.id, Number(req.params.id));
+    if (!row) return res.status(404).json({ error: 'File not found.' });
+    store.removeStored(row.stored_as);
+    files.remove(req.user.id, row.id);
+    res.json({ ok: true });
+  } catch (e) { next(e); }
+});
+
+/* ================= FIR PDF ================= */
+// Takes the complaint fields, renders an A4 PDF and stores it as a cloud file.
+app.post('/api/fir', auth.requireAuth, async (req, res, next) => {
+  try {
+    const b = req.body || {};
+    const fields = {
+      ref: clean(b.ref, 60), district: clean(b.district, 80), station: clean(b.station, 120),
+      reportedAt: clean(b.reportedAt, 60) || new Date().toLocaleString('en-IN'),
+      act: clean(b.act, 200), offence: clean(b.offence, 160),
+      when: clean(b.when, 60), place: clean(b.place, 240), distance: clean(b.distance, 60),
+      delay: clean(b.delay, 200), earlier: clean(b.earlier, 20),
+      name: clean(b.name, 120), father: clean(b.father, 120), age: clean(b.age, 10),
+      sex: clean(b.sex, 20), occupation: clean(b.occupation, 80),
+      address: clean(b.address, 240), phone: clean(b.phone, 30),
+      people: clean(b.people, 400), accusedAddress: clean(b.accusedAddress, 300),
+      witnesses: clean(b.witnesses, 400), property: clean(b.property, 300),
+      injury: clean(b.injury, 300), description: clean(b.description, 6000),
+      action: clean(b.action, 160)
+    };
+    if (!fields.name) return res.status(400).json({ error: 'The complainant name is required.' });
+
+    const warn = hasNonLatin(fields.description + fields.name + fields.place)
+      ? 'Some text uses a non-Latin script, which the PDF font cannot draw. Use Print / Save as PDF on the page for those languages.'
+      : null;
+
+    const pdf = await buildFirPdf(fields);
+    const storedAs = 'fir-' + Date.now() + '-' + crypto.randomBytes(6).toString('hex') + '.pdf';
+    fsx.writeFileSync(pathx.join(store.UPLOAD_DIR, storedAs), pdf);
+
+    const row = files.create(req.user.id, {
+      kind: 'pdf',
+      name: store.safeName('FIR-' + (fields.name || 'complaint') + '.pdf', 'FIR.pdf'),
+      mime: 'application/pdf', size: pdf.length, storedAs,
+      note: 'F.I.R. written complaint' + (fields.ref ? ' (' + fields.ref + ')' : ''),
+      lat: Number.isFinite(Number(b.lat)) ? Number(b.lat) : null,
+      lng: Number.isFinite(Number(b.lng)) ? Number(b.lng) : null
+    });
+
+    res.status(201).json({ file: publicFile(row), warning: warn });
   } catch (e) { next(e); }
 });
 

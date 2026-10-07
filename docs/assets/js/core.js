@@ -152,11 +152,32 @@
      Base URL order: what the user saved in the Account page, then
      the <meta name="api-base"> tag, then same origin.
      ============================================================ */
+  // Where the backend lives. No configuration needed by the user:
+  //   1. ?api=<url> in the address bar wins (escape hatch)
+  //   2. a saved override (the Account page's advanced field)
+  //   3. if this page is served BY the backend, use the same origin
+  //   4. otherwise the default baked into the page
   SS.getApiBase = function () {
+    try {
+      const q = new URLSearchParams(location.search).get('api');
+      if (q) return String(q).replace(/\/$/, '');
+    } catch (e) { /* no URLSearchParams */ }
     const saved = SS.store.get('ss_api_base', '');
     if (saved) return String(saved).replace(/\/$/, '');
+    const host = location.hostname || '';
+    const isStaticHost = /\.github\.io$|\.netlify\.app$|\.vercel\.app$|\.pages\.dev$/.test(host);
+    if (host && !isStaticHost) return '';      // served by the backend -> same origin
     const m = document.querySelector('meta[name="api-base"]');
     return (m && m.content ? m.content : '').replace(/\/$/, '');
+  };
+
+  // Is there a real backend to talk to? Either an explicit base URL, or we are
+  // being served by a server rather than a static host.
+  SS.isBackendLikely = function () {
+    if (SS.getApiBase()) return true;
+    const host = location.hostname || '';
+    if (!host) return false;
+    return !/\.github\.io$|\.netlify\.app$|\.vercel\.app$|\.pages\.dev$/.test(host);
   };
   SS.setApiBase = function (url) {
     SS.store.set('ss_api_base', url ? String(url).trim().replace(/\/$/, '') : '');
@@ -169,32 +190,46 @@
     SS.store.set('ss_user', user || null);
   };
 
+  // Every request is bounded - a sleeping or unreachable host used to leave the
+  // UI stuck on "Thinking..." forever.
   SS.api = async function (path, opts) {
     opts = opts || {};
     const headers = Object.assign({ 'Content-Type': 'application/json' }, opts.headers || {});
     const token = SS.getToken();
     if (token) headers.Authorization = 'Bearer ' + token;
-    let res;
+
+    const ctrl = new AbortController();
+    const ms = opts.timeout || 15000;
+    const timer = setTimeout(() => ctrl.abort(), ms);
     try {
-      res = await fetch(SS.getApiBase() + path, {
-        method: opts.method || 'GET',
-        headers,
-        body: opts.body ? JSON.stringify(opts.body) : undefined
-      });
-    } catch (netErr) {
-      throw new Error('Cannot reach the server. Is the backend running?');
-    }
-    let data = null;
-    try { data = await res.json(); } catch (e) { /* non-JSON */ }
-    if (!res.ok) {
-      // A 404 on an /api/ path with no backend configured means the site is
-      // being served statically (e.g. GitHub Pages) and has no server at all.
-      if (res.status === 404 && path.indexOf('/api/') === 0 && !SS.getApiBase()) {
-        throw new Error('No backend is connected to this site yet. Open the Account page and add your backend URL.');
+      let res;
+      try {
+        res = await fetch(SS.getApiBase() + path, {
+          method: opts.method || 'GET',
+          headers,
+          body: opts.body ? JSON.stringify(opts.body) : undefined,
+          signal: ctrl.signal
+        });
+      } catch (netErr) {
+        if (netErr && netErr.name === 'AbortError') {
+          throw new Error('The server did not answer within ' + Math.round(ms / 1000) + ' seconds.');
+        }
+        throw new Error('Cannot reach the server.');
       }
-      throw new Error((data && data.error) || ('Request failed (' + res.status + ')'));
+
+      let data = null;
+      try { data = await res.json(); } catch (e) { /* non-JSON */ }
+      if (!res.ok) {
+        // 404 on an /api/ path with no server configured = a purely static host.
+        if (res.status === 404 && path.indexOf('/api/') === 0 && !SS.isBackendLikely()) {
+          throw new Error('No server is connected to this site yet.');
+        }
+        throw new Error((data && data.error) || ('Request failed (' + res.status + ')'));
+      }
+      return data || {};
+    } finally {
+      clearTimeout(timer);
     }
-    return data || {};
   };
 
   /* ---------- shared state (survives across pages) ---------- */
@@ -246,8 +281,9 @@
   // The assistant is AI-only: every question goes to the backend, which is
   // backed by a live AI provider. There is no local canned-answer fallback.
   async function askServer(msg) {
+    if (!SS.getApiBase() && !SS.isBackendLikely()) return null;
     try {
-      const r = await SS.api('/api/chat', { method: 'POST', body: { message: msg, lang: LANG } });
+      const r = await SS.api('/api/chat', { method: 'POST', body: { message: msg, lang: LANG }, timeout: 6000 });
       return (r && r.reply) ? r.reply : null;
     } catch (e) { return null; }
   }
@@ -487,7 +523,12 @@
 
     // AI only - the backend first, then a direct browser call if there is no
     // backend connected. If both fail, say so plainly.
-    let answer = await askServer(msg);
+    // Do not let a slow or sleeping backend hold the answer hostage: give it a
+    // short window, then fall through to the direct browser call.
+    let answer = await Promise.race([
+      askServer(msg),
+      new Promise((r) => setTimeout(() => r(null), 5000))
+    ]);
     if (!answer) answer = await askDirect(msg);
     if (!answer) {
       answer = 'I could not reach the AI service just now. Open the Account page to set your AI provider, or try again in a moment.';

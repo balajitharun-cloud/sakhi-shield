@@ -31,26 +31,29 @@
 
   /* ---------- backend connection ---------- */
   const urlInput = $('#serverUrl');
-  if (urlInput) urlInput.value = SS.getApiBase();
+  // Only the saved override is shown; the built-in default is not user-facing.
+  if (urlInput) urlInput.value = SS.store.get('ss_api_base', '') || '';
 
   function describeBase() {
-    const base = SS.getApiBase();
-    setServerHint(base
-      ? 'Backend set to ' + base + '. Press Test connection to check it.'
-      : 'No backend set. The app works fully offline; add a backend URL to enable accounts, cloud sync and real SOS alerts.');
+    if (!SS.isBackendLikely()) {
+      setServerHint('No server connected. Accounts, cloud upload and alerts need the backend - deploy it on Render (see DEPLOY.md), then reload.');
+      return;
+    }
+    setServerHint('Server found. Press Check connection to confirm it is awake.');
   }
 
   async function testConnection() {
-    setServerHint('Checking the backend\u2026');
+    setServerHint('Checking the server\u2026 a free instance can take ~30 seconds to wake.');
     try {
-      const r = await SS.api('/api/health');
+      const r = await SS.api('/api/health', { timeout: 40000 });
       const c = r.channels || {};
       const on = (v) => (v ? 'on' : 'off');
       setServerHint('Connected. Alerts - email: ' + on(c.email) + ', SMS: ' + on(c.sms) + ', AI chat: ' + on(c.llm) + '.');
-      SS.toast('Backend connected', 'ok');
+      SS.toast('Server connected', 'ok');
       return true;
     } catch (e) {
-      setServerHint('Not reachable (' + e.message + '). Deploy the backend on Render, paste its URL above and press Save.');
+      setServerHint('Not reachable: ' + e.message +
+        '  A sleeping free instance can take ~30 seconds to wake - press Check connection again.');
       return false;
     }
   }
@@ -58,7 +61,7 @@
   const saveBtn = $('#saveServerBtn');
   if (saveBtn) saveBtn.addEventListener('click', async () => {
     SS.setApiBase(urlInput ? urlInput.value : '');
-    SS.toast('Backend URL saved on this device', 'ok');
+    SS.toast(urlInput && urlInput.value ? 'Server address saved' : 'Using the built-in default', 'ok');
     await testConnection();
   });
 
@@ -68,7 +71,7 @@
     if (urlInput) urlInput.value = '';
     describeBase();
     setAuthHint('');
-    SS.toast('Backend URL cleared');
+    SS.toast('Reset to the built-in default');
   });
 
   const testBtn = $('#testServerBtn');

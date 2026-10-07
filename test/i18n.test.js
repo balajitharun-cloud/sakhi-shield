@@ -180,7 +180,43 @@ async function main() {
     const data = fs.readFileSync(path.join(DIR, 'assets/js/data.js'), 'utf8');
     check(core.includes('/api/chat'), 'chatbot calls the AI endpoint');
     check(!core.includes('localAnswer') && !data.includes('CHAT_INTENTS'), 'the old canned-answer chatbot is gone');
-    check(core.includes('No backend is connected'), 'a missing backend produces a clear message');
+    check(core.includes('No server is connected'), 'a missing backend produces a clear message');
+  }
+
+  console.log('\nserver discovery + request timeouts');
+  {
+    const { win, doc } = await load('account.html');
+    check(win.SS.getApiBase() === 'https://sakhi-shield.onrender.com',
+      'uses the built-in server address on a static host (no configuration needed)');
+    check(win.SS.isBackendLikely() === true, 'a configured base counts as a backend');
+
+    win.SS.setApiBase('https://example.test/');
+    check(win.SS.getApiBase() === 'https://example.test', 'a saved override wins and the trailing slash is trimmed');
+    win.SS.setApiBase('');
+    check(win.SS.getApiBase() === 'https://sakhi-shield.onrender.com', 'clearing the override falls back to the default');
+
+    // the Backend URL box is no longer a required field in the main flow
+    const urlBox = doc.querySelector('#serverUrl');
+    check(!!urlBox && urlBox.closest('details') !== null, 'the server address is tucked into an advanced disclosure');
+
+    // a hung request must time out rather than leaving the UI stuck
+    win.fetch = (url, opts) => new Promise((resolve, reject) => {
+      if (opts && opts.signal) {
+        opts.signal.addEventListener('abort', () => {
+          const e = new Error('aborted'); e.name = 'AbortError'; reject(e);
+        });
+      }
+    });
+    const t0 = Date.now();
+    let err = null;
+    try { await win.SS.api('/api/health', { timeout: 250 }); } catch (e) { err = e.message; }
+    check(/did not answer within/.test(err || ''), 'a hanging request times out with a clear message');
+    check(Date.now() - t0 < 5000, 'the timeout fires promptly instead of hanging');
+
+    win.fetch = () => Promise.reject(new TypeError('Failed to fetch'));
+    err = null;
+    try { await win.SS.api('/api/health'); } catch (e) { err = e.message; }
+    check(/Cannot reach the server/.test(err || ''), 'an unreachable server is reported plainly');
   }
 
   console.log('\nbrowser-direct AI (works with no backend)');

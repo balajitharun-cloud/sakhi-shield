@@ -7,12 +7,12 @@
 <meta name="description" content="Sakhi Shield - a women safety toolkit. Connect the backend, sign in and sync your contacts.">
 <!-- When the front-end is hosted separately from the API (e.g. GitHub Pages),
      set the backend origin here, or paste it on the Account page. -->
-<meta name="api-base" content="">
+<meta name="api-base" content="https://sakhi-shield.onrender.com">
 <title>Account &middot; Sakhi Shield</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/css/style.css?v=8">
+<link rel="stylesheet" href="assets/css/style.css?v=9">
 </head>
 <body>
 
@@ -54,19 +54,23 @@
     </div>
     <div class="grid grid--2">
       <div class="card">
-        <h3>Backend connection</h3>
-        <p class="dim" style="font-size:.86rem">The app works offline on its own. To use accounts, cloud sync and real SOS
-          alerts, point it at your backend. Deploy the server (Render blueprint is in the repo), then paste its URL here.</p>
-        <div class="field">
-          <label for="serverUrl">Backend URL</label>
-          <input id="serverUrl" placeholder="https://sakhi-shield.onrender.com" autocomplete="off">
-        </div>
+        <h3>Server</h3>
+        <p class="dim" style="font-size:.86rem">Your account, contacts, F.I.R. PDFs and recordings are stored on the app's own server, not in this browser. Passwords are hashed, and only you can read your own files. The app finds the server by itself - there is nothing to configure.</p>
         <div class="row">
-          <button class="btn btn--sm btn--solid" id="saveServerBtn" type="button">Save</button>
-          <button class="btn btn--sm" id="testServerBtn" type="button">Test connection</button>
-          <button class="btn btn--sm" id="clearServerBtn" type="button">Clear</button>
+          <button class="btn btn--sm btn--solid" id="testServerBtn" type="button">Check connection</button>
         </div>
-        <p class="dim" style="font-size:.78rem;margin:12px 0 0" id="serverHint">Checking the backend…</p>
+        <p class="dim" style="font-size:.78rem;margin:12px 0 0" id="serverHint">Checking the server…</p>
+        <details style="margin-top:12px">
+          <summary class="dim" style="font-size:.78rem;cursor:pointer">Server address (advanced)</summary>
+          <div class="field" style="margin-top:8px">
+            <label for="serverUrl">Address - leave blank to use the default</label>
+            <input id="serverUrl" autocomplete="off">
+          </div>
+          <div class="row">
+            <button class="btn btn--sm" id="saveServerBtn" type="button">Save</button>
+            <button class="btn btn--sm" id="clearServerBtn" type="button">Reset to default</button>
+          </div>
+        </details>
       </div>
 
       <div class="card">
@@ -170,9 +174,9 @@
 
 <div class="toast-host" id="toastHost" aria-live="polite" aria-atomic="false"></div>
 
-<script src="assets/js/i18n.js?v=8"></script>
-<script src="assets/js/data.js?v=8"></script>
-<script src="assets/js/core.js?v=8"></script>
-<script src="assets/js/account.js?v=8"></script>
+<script src="assets/js/i18n.js?v=9"></script>
+<script src="assets/js/data.js?v=9"></script>
+<script src="assets/js/core.js?v=9"></script>
+<script src="assets/js/account.js?v=9"></script>
 </body>
 </html>

@@ -36,18 +36,36 @@ browser, so it works without a backend. Set it up on the Account page.
 If you would rather not use a Blueprint: **New → Web Service**, pick the repo, set
 Build Command `npm install` and Start Command `npm start`.
 
-## 2. Point the front-end at it (about 30 seconds)
+## 2. Point the front-end at it (normally automatic)
 
-1. Open your Pages site's Account page:
-   `https://<username>.github.io/sakhi-shield/account.html`
-2. In the **Backend connection** card, paste the Render URL into **Backend URL**.
-3. Press **Save**, then **Test connection**.
-4. It should read: `Connected. Alerts - email: off, SMS: off, AI chat: on.`
+The Pages site already knows where the backend lives: the address is built into
+the pages as `https://sakhi-shield.onrender.com`, which is what the blueprint
+names the service. So if the service is called `sakhi-shield`, **there is nothing
+to do** - accounts, login, cloud upload and alerts work as soon as Render is live.
 
-The URL is stored on your device, so there is no code change and no redeploy.
-Account sign-up, login, contact sync and SOS alerts now work.
+If Render had to name it something else (it appends a suffix when a name is taken,
+e.g. `sakhi-shield-a1b2.onrender.com`), you have two options:
 
-## 3. Optional - make the alerts actually send
+- **Easiest:** in Render, rename the service to `sakhi-shield`.
+- **Or** open the Account page, expand **Server address (advanced)**, paste the
+  real URL and press Save. It is remembered on that device.
+
+To change it for everyone, edit the `api-base` line in `build_pages.py` and
+rebuild (`python3 build_pages.py`), then commit.
+
+Press **Check connection** on the Account page to confirm. It should read:
+`Connected. Alerts - email: off, SMS: off, AI chat: on.` A sleeping free instance
+can take ~30 seconds to wake - press it again if it times out.
+
+## 3. Privacy - what is stored where
+
+- Passwords are hashed with bcrypt; the plaintext is never stored or logged.
+- Login issues a signed JWT with an expiry; it is the only credential the app keeps.
+- Cloud files are scoped to the owning account - a different user gets `404`,
+  which is covered by a test.
+- F.I.R. PDFs, contacts and recordings live on the server, not in the browser.
+
+## 4. Optional - make the alerts actually send
 
 By default the backend **logs** alert emails and SMS instead of sending them, so
 you can test the whole flow for free. To send for real, add these in Render under

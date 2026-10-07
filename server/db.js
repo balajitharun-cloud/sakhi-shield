@@ -103,6 +103,23 @@ CREATE TABLE IF NOT EXISTS complaints (
 );
 
 CREATE INDEX IF NOT EXISTS idx_complaints_user ON complaints(user_id);
+
+CREATE TABLE IF NOT EXISTS files (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id    INTEGER NOT NULL,
+  kind       TEXT    NOT NULL,
+  name       TEXT    NOT NULL,
+  mime       TEXT,
+  size       INTEGER,
+  stored_as  TEXT    NOT NULL,
+  note       TEXT,
+  lat        REAL,
+  lng        REAL,
+  created_at TEXT    NOT NULL,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_files_user ON files(user_id);
 `);
 
 const now = () => new Date().toISOString();
@@ -227,4 +244,32 @@ const alerts = {
   }
 };
 
-module.exports = { db, users, contacts, reports, alerts, complaints, DB_PATH };
+/* ---------- uploaded files (evidence, PDFs) ---------- */
+const files = {
+  list(userId) {
+    return db.prepare(
+      'SELECT id, kind, name, mime, size, note, lat, lng, created_at FROM files WHERE user_id = ? ORDER BY id DESC'
+    ).all(userId);
+  },
+  findById(userId, id) {
+    return db.prepare('SELECT * FROM files WHERE id = ? AND user_id = ?').get(id, userId);
+  },
+  create(userId, f) {
+    const info = db.prepare(
+      `INSERT INTO files (user_id, kind, name, mime, size, stored_as, note, lat, lng, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).run(userId, f.kind, f.name, f.mime || null, f.size || 0, f.storedAs,
+          f.note || null, f.lat ?? null, f.lng ?? null, now());
+    return files.findById(userId, info.lastInsertRowid);
+  },
+  remove(userId, id) {
+    return db.prepare('DELETE FROM files WHERE id = ? AND user_id = ?').run(id, userId).changes;
+  },
+  stats(userId) {
+    return db.prepare(
+      'SELECT COUNT(*) AS n, COALESCE(SUM(size),0) AS bytes FROM files WHERE user_id = ?'
+    ).get(userId);
+  }
+};
+
+module.exports = { db, users, contacts, reports, alerts, complaints, files, DB_PATH };
