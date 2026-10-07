@@ -43,7 +43,7 @@ sakhi-shield/
 │   └── sharePage.js      the public live-location viewer page
 ├── test/
 │   ├── api.test.js       end-to-end API test (73 checks)
-│   └── i18n.test.js      front-end test across all 11 pages (59 checks)
+│   └── i18n.test.js      front-end test across all 11 pages (66 checks)
 ├── render.yaml           one-click Render blueprint
 └── .env.example          every config knob, documented
 ```
@@ -54,7 +54,7 @@ sakhi-shield/
 - **One page per feature** - home, SOS, helplines, location, contacts, tools, evidence, safety, rights, complaint and account
 - Mobile-first: 44px touch targets, 16px inputs (no iOS zoom), safe-area insets, responsive complaint sheet
 - Three languages - English, हिंदी and ಕನ್ನಡ - with a switcher in the header; the whole UI, the tips, the rights and the chatbot are translated
-- **Sakhi Assistant chatbot** - AI only. Every question goes to the backend, which calls a live AI provider (see below). There is no canned keyword-answer fallback; if the AI service is unreachable the assistant says so.
+- **Sakhi Assistant chatbot** - AI only. Every question goes to the backend, which calls a live AI provider. If no backend is connected the browser calls the AI provider directly instead (set the provider and key on the Account page). There is no canned keyword-answer fallback; if no AI service responds the assistant says so.
 - **SOS with automatic delivery**: arming it sends your live location to your trusted contacts by itself - no extra tap
 - **Motion sensor**: shake the phone to arm the SOS, with a proper iOS permission request and a sensitivity setting
 - **Camera & recording** - take a photo, or record audio/video as proof. Everything is geo-tagged, timestamped and stored in an on-device vault (IndexedDB); download anything you need for the police. Can auto-start recording when the SOS fires.
@@ -128,6 +128,24 @@ All authenticated routes take `Authorization: Bearer <token>`.
 | POST | `/api/alerts/:id/resolve` | yes | Mark yourself safe |
 | GET  | `/api/public/share/:token` | no | What the share viewer polls |
 | GET  | `/s/:token` | no | Public live-location page |
+
+## Deploy
+
+**The front-end and the backend are deployed separately.** GitHub Pages serves
+`docs/` as a static site; it cannot run the Node server. The backend has to go to a
+host such as Render, and the front-end then has to be told where it is.
+
+1. Front-end (already done): GitHub Pages serves `docs/` at
+   `https://<username>.github.io/sakhi-shield/`.
+2. Backend: on Render, **New -> Blueprint**, pick this repo. `render.yaml`
+   configures the service. You get `https://<service-name>.onrender.com`.
+3. Point the front-end at it: open the **Account** page, paste that URL into
+   **Backend URL**, press **Save**. The URL is stored on the device, so no code
+   change or redeploy is needed.
+
+Until step 3 is done, account sign-up and cloud sync cannot work - the page will
+say *"No backend is reachable"*. The chatbot still works: it falls back to calling
+the AI provider directly from the browser (set it up on the Account page).
 
 ## Deploy on Render (free tier)
 

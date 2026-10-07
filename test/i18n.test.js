@@ -151,6 +151,34 @@ async function main() {
     const data = fs.readFileSync(path.join(DIR, 'assets/js/data.js'), 'utf8');
     check(core.includes('/api/chat'), 'chatbot calls the AI endpoint');
     check(!core.includes('localAnswer') && !data.includes('CHAT_INTENTS'), 'the old canned-answer chatbot is gone');
+    check(core.includes('No backend is connected'), 'a missing backend produces a clear message');
+  }
+
+  console.log('\nbrowser-direct AI (works with no backend)');
+  {
+    const { win } = await load('account.html');
+    win.SS.setAI({ provider: 'groq', key: 'test-key', model: '' });
+    let captured = null;
+    win.fetch = async (url, opts) => {
+      captured = { url, opts };
+      return { ok: true, status: 200, json: async () => ({ choices: [{ message: { content: 'DIRECT OK' } }] }) };
+    };
+    const reply = await win.SS.askDirect('How do I file an FIR?');
+    check(reply === 'DIRECT OK', 'calls the AI provider directly from the browser');
+    check(captured && captured.url.includes('api.groq.com'), 'uses the Groq endpoint for the groq provider');
+    check(captured && /Bearer test-key/.test(captured.opts.headers.Authorization), 'sends the saved key as a bearer token');
+
+    win.SS.setAI({ provider: 'groq', key: '', model: '' });
+    check((await win.SS.askDirect('hello')) === null, 'returns null when a key is required but missing');
+
+    win.SS.setAI({ provider: 'gemini', key: 'gk', model: '' });
+    captured = null;
+    win.fetch = async (url) => {
+      captured = url;
+      return { ok: true, status: 200, json: async () => ({ candidates: [{ content: { parts: [{ text: 'GEMINI OK' }] } }] }) };
+    };
+    check((await win.SS.askDirect('hi')) === 'GEMINI OK', 'supports the Gemini response shape');
+    check(captured && captured.includes('generativelanguage.googleapis.com'), 'uses the Gemini endpoint');
   }
   {
     const { doc } = await load('index.html');

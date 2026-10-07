@@ -190,6 +190,49 @@
     SS.toast('Synced ' + added + ' contact(s)', added ? 'ok' : 'err');
   });
 
+  /* ---------- AI assistant settings (browser mode) ---------- */
+  const aiProvider = $('#aiProvider'), aiKey = $('#aiKey');
+
+  function paintAI() {
+    const cfg = SS.getAI();
+    if (aiProvider) aiProvider.value = cfg.provider || 'pollinations';
+    if (aiKey) aiKey.value = cfg.key || '';
+    const hint = $('#aiHint');
+    if (!hint) return;
+    const p = cfg.provider || 'pollinations';
+    if (p !== 'pollinations' && !cfg.key) {
+      hint.textContent = 'Add an API key for ' + p + ', then press Save.';
+    } else {
+      hint.textContent = 'Ready: ' + p + (cfg.key ? ' (key saved on this device)' : ' (no key needed)') +
+        '. The chatbot uses this when the backend is not connected.';
+    }
+  }
+
+  const aiSave = $('#aiSaveBtn');
+  if (aiSave) aiSave.addEventListener('click', () => {
+    SS.setAI({
+      provider: aiProvider ? aiProvider.value : 'pollinations',
+      key: aiKey ? aiKey.value.trim() : '',
+      model: ''
+    });
+    paintAI();
+    SS.toast('AI settings saved on this device', 'ok');
+  });
+
+  const aiTest = $('#aiTestBtn');
+  if (aiTest) aiTest.addEventListener('click', async () => {
+    const hint = $('#aiHint');
+    if (hint) hint.textContent = 'Asking the assistant\u2026';
+    const reply = await SS.askDirect('Reply with exactly: OK');
+    if (hint) {
+      hint.textContent = reply
+        ? 'Working. The assistant replied: ' + String(reply).slice(0, 80)
+        : 'No reply from ' + (SS.getAI().provider || 'pollinations') + '. Check the key, or try another provider.';
+    }
+    SS.toast(reply ? 'AI assistant is working' : 'AI assistant did not respond', reply ? 'ok' : 'err');
+  });
+  paintAI();
+
   /* ---------- boot ---------- */
   setMode('login');
   setUI();

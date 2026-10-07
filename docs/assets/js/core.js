@@ -26,13 +26,20 @@
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
   /* ---------- storage ---------- */
+  // localStorage can be unavailable (Safari private mode, cookies disabled,
+  // opaque origins), so keep an in-memory copy as a session fallback.
+  const MEM = {};
   SS.store = {
     get(key, fallback) {
-      try { const v = localStorage.getItem(key); return v == null ? fallback : JSON.parse(v); }
-      catch (e) { return fallback; }
+      try {
+        const v = localStorage.getItem(key);
+        if (v != null) return JSON.parse(v);
+      } catch (e) { /* unavailable */ }
+      return Object.prototype.hasOwnProperty.call(MEM, key) ? MEM[key] : fallback;
     },
     set(key, val) {
-      try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) { /* private mode */ }
+      MEM[key] = val;
+      try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) { /* unavailable */ }
     }
   };
 
@@ -178,7 +185,14 @@
     }
     let data = null;
     try { data = await res.json(); } catch (e) { /* non-JSON */ }
-    if (!res.ok) throw new Error((data && data.error) || ('Request failed (' + res.status + ')'));
+    if (!res.ok) {
+      // A 404 on an /api/ path with no backend configured means the site is
+      // being served statically (e.g. GitHub Pages) and has no server at all.
+      if (res.status === 404 && path.indexOf('/api/') === 0 && !SS.getApiBase()) {
+        throw new Error('No backend is connected to this site yet. Open the Account page and add your backend URL.');
+      }
+      throw new Error((data && data.error) || ('Request failed (' + res.status + ')'));
+    }
     return data || {};
   };
 
@@ -237,6 +251,91 @@
     } catch (e) { return null; }
   }
 
+  /* ---------- direct (browser) AI, for when there is no backend ---------- */
+  const AI_SYSTEM =
+    'You are Sakhi Assistant, a calm, practical safety assistant for women in India. ' +
+    'Give short, concrete, actionable steps. Never blame the user. Mention the relevant ' +
+    'Indian helpline or law when useful (112 emergency, 181 women helpline, 1091, 1930 cyber). ' +
+    'You are not a lawyer or a doctor. Keep answers under 120 words.';
+
+  SS.getAI = () => SS.store.get('ss_ai', { provider: 'pollinations', key: '', model: '' });
+  SS.setAI = (v) => SS.store.set('ss_ai', v);
+
+  async function askDirect(msg) {
+    const cfg = SS.getAI();
+    const provider = cfg.provider || 'pollinations';
+    const key = String(cfg.key || '').trim();
+    const model = String(cfg.model || '').trim();
+    const langName = { en: 'English', hi: 'Hindi', kn: 'Kannada' }[LANG] || 'English';
+    const system = AI_SYSTEM + ' Reply in ' + langName + '.';
+
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 25000);
+    try {
+      if (provider === 'pollinations') {
+        const url = 'https://text.pollinations.ai/' +
+          encodeURIComponent(system + '\n\n' + msg) + '?model=' + encodeURIComponent(model || 'openai');
+        const r = await fetch(url, { signal: ctrl.signal });
+        if (!r.ok) return null;
+        const t = await r.text();
+        return t ? t.trim() : null;
+      }
+
+      if (provider === 'gemini') {
+        if (!key) return null;
+        const url = 'https://generativelanguage.googleapis.com/v1beta/models/' +
+          (model || 'gemini-1.5-flash') + ':generateContent?key=' + encodeURIComponent(key);
+        const r = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            systemInstruction: { parts: [{ text: system }] },
+            contents: [{ role: 'user', parts: [{ text: msg }] }]
+          }),
+          signal: ctrl.signal
+        });
+        if (!r.ok) return null;
+        const d = await r.json();
+        const c = d && d.candidates && d.candidates[0] && d.candidates[0].content;
+        const t = c && c.parts && c.parts[0] && c.parts[0].text;
+        return t ? String(t).trim() : null;
+      }
+
+      const urls = {
+        groq: 'https://api.groq.com/openai/v1/chat/completions',
+        openai: 'https://api.openai.com/v1/chat/completions',
+        openrouter: 'https://openrouter.ai/api/v1/chat/completions'
+      };
+      const defaults = {
+        groq: 'llama-3.1-8b-instant',
+        openai: 'gpt-4o-mini',
+        openrouter: 'meta-llama/llama-3.1-8b-instruct:free'
+      };
+      const url = urls[provider];
+      if (!url || !key) return null;
+      const r = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key },
+        body: JSON.stringify({
+          model: model || defaults[provider],
+          messages: [{ role: 'system', content: system }, { role: 'user', content: msg }],
+          temperature: 0.3,
+          max_tokens: 400
+        }),
+        signal: ctrl.signal
+      });
+      if (!r.ok) return null;
+      const d = await r.json();
+      const t = d && d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content;
+      return t ? String(t).trim() : null;
+    } catch (e) {
+      return null;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+  SS.askDirect = askDirect;
+
   SS.renderChips = function () {
     const host = $('#chatChips');
     if (!host) return;
@@ -284,10 +383,12 @@
     const thinking = addMsg('Thinking\u2026', 'bot');
     if (thinking) thinking.classList.add('msg--typing');
 
-    // AI only - ask the backend. If it is unreachable, say so plainly.
+    // AI only - the backend first, then a direct browser call if there is no
+    // backend connected. If both fail, say so plainly.
     let answer = await askServer(msg);
+    if (!answer) answer = await askDirect(msg);
     if (!answer) {
-      answer = 'I could not reach the AI service just now. Check the backend URL on the Account page, or try again in a moment.';
+      answer = 'I could not reach the AI service just now. Open the Account page to set your AI provider, or try again in a moment.';
     }
     if (thinking) thinking.remove();
     addMsg(answer, 'bot');

@@ -68,6 +68,30 @@
         </div>
         <p class="dim" style="font-size:.78rem;margin:12px 0 0" id="serverHint">Checking the backend…</p>
       </div>
+
+      <div class="card">
+        <h3>AI assistant</h3>
+        <p class="dim" style="font-size:.86rem">The assistant normally runs through the backend. With no backend connected it can call the AI service straight from this browser instead. The key is stored only on this device.</p>
+        <div class="field">
+          <label for="aiProvider">Provider</label>
+          <select id="aiProvider">
+            <option value="pollinations">pollinations (free, no key - often busy)</option>
+            <option value="groq">Groq (free tier, needs a key)</option>
+            <option value="gemini">Google Gemini (needs a key)</option>
+            <option value="openai">OpenAI (needs a key)</option>
+            <option value="openrouter">OpenRouter (needs a key)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="aiKey">API key</label>
+          <input id="aiKey" type="password" placeholder="Paste your key here" autocomplete="off">
+        </div>
+        <div class="row">
+          <button class="btn btn--sm btn--solid" id="aiSaveBtn" type="button">Save</button>
+          <button class="btn btn--sm" id="aiTestBtn" type="button">Test connection</button>
+        </div>
+        <p class="dim" style="font-size:.78rem;margin:12px 0 0" id="aiHint"></p>
+      </div>
       <div class="card">
         <div id="authForms">
           <div class="row" style="margin-bottom:14px">
