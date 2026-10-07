@@ -201,15 +201,18 @@
     const hint = $('#aiHint');
     if (!hint) return;
     const p = cfg.provider || 'pollinations';
+    let msg;
     if (p === 'pollinations' && cfg.key) {
-      hint.textContent = 'A key is saved but the provider is still "pollinations". Pick Groq or Gemini, then press Save.';
+      msg = 'A key is saved but the provider is still "pollinations". Pick Groq or Gemini, then press Save.';
     } else if (p !== 'pollinations' && !cfg.key) {
-      hint.textContent = 'Add an API key for ' + p + ', then press Save.';
+      msg = 'Add an API key for ' + p + ', then press Save.';
     } else if (p === 'pollinations') {
-      hint.textContent = 'pollinations needs no key, but it is often down. Groq or Gemini with a free key is far more reliable.';
+      msg = 'pollinations needs no key, but it is often down. Groq or Gemini with a free key is far more reliable.';
     } else {
-      hint.textContent = 'Ready: ' + p + ' (key saved on this device). The chatbot uses this when no backend is connected.';
+      msg = 'Ready: ' + p + ' (key saved on this device). The chatbot uses this when no backend is connected.';
     }
+    // The version is shown so a stale cached script is obvious at a glance.
+    hint.textContent = msg + '  [assistant v' + (SS.version || '?') + ']';
   }
 
   const aiSave = $('#aiSaveBtn');

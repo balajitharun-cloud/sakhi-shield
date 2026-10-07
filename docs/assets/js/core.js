@@ -8,6 +8,7 @@
   'use strict';
 
   const SS = window.SS = {};
+  SS.version = '6';
 
   /* ---------- DOM helpers ---------- */
   const $ = SS.$ = (sel, root) => (root || document).querySelector(sel);
@@ -288,12 +289,12 @@
     return names.slice().sort((a, b) => score(b) - score(a));
   }
 
-  async function discoverModels(provider, key, signal) {
+  async function discoverModels(provider, key, signal, diag) {
     try {
       if (provider === 'gemini') {
         const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models?key=' +
           encodeURIComponent(key), { signal });
-        if (!r.ok) return [];
+        if (!r.ok) { if (diag) diag.listStatus = r.status; return []; }
         const d = await r.json().catch(() => null);
         const names = ((d && d.models) || [])
           .filter((m) => (m.supportedGenerationMethods || []).indexOf('generateContent') >= 0)
@@ -311,7 +312,7 @@
       const r = await fetch(base + '/models', {
         headers: { Authorization: 'Bearer ' + key }, signal
       });
-      if (!r.ok) return [];
+      if (!r.ok) { if (diag) diag.listStatus = r.status; return []; }
       const d = await r.json().catch(() => null);
       const names = ((d && d.data) || []).map((m) => m.id).filter(Boolean)
         .filter((n) => !/whisper|guard|tts|embed|moderation|image|audio/i.test(n));
@@ -353,13 +354,16 @@
 
       // Build the candidate list: what the user chose, then what the provider
       // actually serves right now, then a small safety net.
+      // 'gemini-flash-latest' is an alias Google keeps pointed at a live model,
+      // so it survives retirements.
       const SAFETY = {
-        gemini: ['gemini-3.8-flash', 'gemini-2.5-flash'],
+        gemini: ['gemini-flash-latest', 'gemini-3.8-flash', 'gemini-2.5-flash', 'gemini-1.5-flash'],
         groq: ['openai/gpt-oss-20b', 'openai/gpt-oss-120b'],
-        openai: ['gpt-4o-mini'],
+        openai: ['gpt-4o-mini', 'gpt-4o'],
         openrouter: ['meta-llama/llama-3.1-8b-instruct:free']
       };
-      const discovered = await discoverModels(provider, key, ctrl.signal);
+      const diag = {};
+      const discovered = await discoverModels(provider, key, ctrl.signal, diag);
       let models = (configured ? [configured] : []).concat(discovered, SAFETY[provider] || []);
       models = models.filter((m, i) => m && models.indexOf(m) === i);
 
@@ -419,7 +423,11 @@
         if (r.status === 404) continue;   // model retired - try the next
         return last;
       }
-      return last || { error: provider + ' had no usable model. Set one in the Model field.' };
+      const extra = ' [model list: ' + (discovered.length ? discovered.length + ' found' : 'none') +
+        (diag.listStatus ? ', HTTP ' + diag.listStatus : '') +
+        '; tried: ' + models.slice(0, 3).join(', ') + ']';
+      return last ? { error: last.error + extra }
+                  : { error: provider + ' had no usable model.' + extra };
     } catch (e) {
       return { error: (e && e.name === 'AbortError') ? 'Timed out after 25s.' : 'Network error: ' + (e && e.message) };
     } finally {
