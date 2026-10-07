@@ -186,8 +186,10 @@ async function main() {
 
     console.log('\nchat assistant (AI only)');
     const chatMod = require('../server/chat.js');
-    check(Object.keys(chatMod.PROVIDERS).length >= 6, 'chat supports multiple AI providers');
-    check('pollinations' in chatMod.PROVIDERS && 'openai' in chatMod.PROVIDERS, 'includes a keyless provider and OpenAI');
+    check(Object.keys(chatMod.PROVIDERS).length >= 5, 'chat supports multiple AI providers');
+    check('groq' in chatMod.PROVIDERS && 'openai' in chatMod.PROVIDERS && 'gemini' in chatMod.PROVIDERS,
+      'includes the keyed providers (Groq, OpenAI, Gemini)');
+    check(!('pollinations' in chatMod.PROVIDERS), 'the dead keyless provider has been removed');
     check(!('KB' in chatMod), 'the old keyword knowledge base has been removed');
 
     r = await call('POST', '/api/chat', { message: 'How do I file an FIR?', lang: 'en' });

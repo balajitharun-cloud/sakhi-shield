@@ -8,9 +8,10 @@ Two pieces, deployed separately:
 | Backend | Render | The AI assistant (and the API for SOS alerts / live-location links) |
 
 GitHub Pages cannot run a Node server, so the backend needs its own host. The
-front-end works fully offline without it; the one feature that needs the server is
-**Sakhi Assistant**, because the AI key is held on the server rather than in the
-browser.
+front-end works fully offline without it. **Sakhi Assistant** is the one feature
+that needs an AI key - either the server holds it (best: it works for everyone), or
+a user pastes their own free key into the chat's gear menu, which works immediately
+with no backend at all.
 
 ---
 
@@ -53,8 +54,9 @@ rebuild (`python3 build_pages.py`), then commit.
 
 ## 3. Privacy - what is stored where
 
-- The AI key lives in the server's environment variables and is never sent to the
-  browser. There is no key field anywhere in the front-end.
+- With a server key, it lives in the environment variables and is never sent to the
+  browser. A key pasted into the chat's gear menu stays in that device's localStorage
+  and is sent only to the AI provider the user chose.
 - Trusted contacts, evidence and the F.I.R. draft stay on the device (localStorage
   and IndexedDB). Nothing is uploaded.
 - The server hashes passwords with bcrypt and issues short-lived JWTs, but the
@@ -75,8 +77,11 @@ you can test the whole flow for free. To send for real, add these in Render unde
 Saving an environment variable triggers a redeploy.
 
 For the assistant, `LLM_PROVIDER=groq` with a free key from **console.groq.com** is
-the most reliable option. The default `pollinations` needs no key but is frequently
-down, which is why the assistant used to sit on "Thinking..." and give up.
+the most reliable option; `gemini` with a key from **aistudio.google.com** works too.
+There is no longer any working keyless provider - the old default (`pollinations`)
+now returns 500 or 402 Payment Required, which is why the assistant used to sit on
+"Thinking..." and give up. Both providers were checked directly: a bogus key returns
+a clean 401 from Groq and 400 from Google, so a real key works.
 
 ---
 
@@ -98,7 +103,8 @@ down, which is why the assistant used to sit on "Thinking..." and give up.
 | `Cannot reach the server` | The Render URL is wrong, or the service is asleep - wait 30s and retry. |
 | `The server did not answer within 25 seconds` | The service was asleep or the AI provider is slow; retry. |
 | Render build fails on `better-sqlite3` | Re-run the deploy; it is usually a transient native-build hiccup. |
-| The assistant says it could not answer | `LLM_API_KEY` is unset in Render, or the provider is down. |
+| The assistant says it could not answer | No key anywhere. Paste one via the chat's gear menu, or set `LLM_PROVIDER` + `LLM_API_KEY` in Render. |
+| "That does not look like a Groq or Google key" | The key must start with `gsk_` (Groq) or `AIza` (Google). |
 
 ## Running it locally instead
 

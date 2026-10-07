@@ -4,9 +4,9 @@
  * Chat backend for the Sakhi Assistant.
  *
  * The assistant is AI-only - there is no local keyword knowledge base. Pick a
- * provider with LLM_PROVIDER:
+ * provider with LLM_PROVIDER (default 'off', which reports the assistant as
+ * unavailable rather than pretending to answer):
  *
- *   pollinations  (DEFAULT) free public endpoint - no API key required
  *   openai        needs LLM_API_KEY
  *   groq          needs LLM_API_KEY
  *   openrouter    needs LLM_API_KEY
@@ -21,7 +21,7 @@
  * goes to that provider. Set LLM_PROVIDER=off to disable the assistant entirely.
  */
 
-const PROVIDER = String(process.env.LLM_PROVIDER || 'pollinations').toLowerCase();
+const PROVIDER = String(process.env.LLM_PROVIDER || 'off').toLowerCase();
 const KEY = process.env.LLM_API_KEY || '';
 const MODEL = process.env.LLM_MODEL || '';
 const TIMEOUT_MS = Number(process.env.LLM_TIMEOUT_MS || 12000);
@@ -35,44 +35,6 @@ const SYSTEM_PROMPT =
 
 /* ---------- provider registry ---------- */
 const PROVIDERS = {
-  pollinations: {
-    keyless: true,
-    model: () => MODEL || 'openai',
-    // Two ways in. The OpenAI-compatible POST is tried first; when it is
-    // rate-limited (it returns 402/500 quite often) we fall back to the
-    // simple path endpoint, which folds the system prompt into the URL.
-    async call(system, user, signal) {
-      const model = MODEL || 'openai';
-      try {
-        const res = await fetch('https://text.pollinations.ai/openai', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            model,
-            messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
-            temperature: 0.3
-          }),
-          signal
-        });
-        if (res.ok) {
-          const d = await res.json();
-          const t = d && d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content;
-          if (t) return String(t).trim();
-        } else {
-          console.error('[chat] pollinations POST HTTP ' + res.status);
-        }
-      } catch (e) {
-        console.error('[chat] pollinations POST failed: ' + e.message);
-      }
-      const url = 'https://text.pollinations.ai/' +
-        encodeURIComponent(system + '\n\n' + user) + '?model=' + encodeURIComponent(model);
-      const res2 = await fetch(url, { signal });
-      if (!res2.ok) { console.error('[chat] pollinations GET HTTP ' + res2.status); return null; }
-      const txt = await res2.text();
-      return txt ? txt.trim() : null;
-    }
-  },
-
   openai: {
     models: () => (MODEL ? [MODEL] : ['gpt-4o-mini']),
     request: (model, system, user) => ({

@@ -39,8 +39,9 @@ services:
       #   SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, MAIL_FROM
       #   TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER
       #
-      # Chat assistant. Defaults to the free public 'pollinations' endpoint,
-      # which needs no key. Set LLM_PROVIDER=off to keep questions local, or
-      # switch to openai/groq/openrouter/anthropic/gemini and add LLM_API_KEY.
+      # The assistant. There is no working keyless provider any more, so it stays
+      # off until you add a free key: set LLM_PROVIDER=groq and LLM_API_KEY=<key
+      # from console.groq.com>, or gemini with a Google AI Studio key.
       - key: LLM_PROVIDER
-        value: pollinations
+        value: "off"
+

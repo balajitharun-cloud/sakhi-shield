@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/css/style.css?v=10">
+<link rel="stylesheet" href="assets/css/style.css?v=12">
 </head>
 <body>
 
@@ -125,7 +125,20 @@
   <div class="chat-head">
     <span class="cdot" aria-hidden="true"></span>
     <b id="chatTitle">Sakhi Assistant</b>
+    <button class="x" id="chatSetupBtn" aria-label="Assistant settings" title="Assistant settings">&#9881;</button>
     <button class="x" id="chatClose" aria-label="Close chat">&#10005;</button>
+  </div>
+  <div class="chat-setup" id="chatSetup" hidden>
+    <p class="dim" style="font-size:.78rem;margin:0 0 10px">The assistant needs a free AI key, kept only on this device. Get one at console.groq.com (keys start with gsk_) or aistudio.google.com (keys start with AIza).</p>
+    <div class="field">
+      <label for="chatKey">AI key</label>
+      <input id="chatKey" type="password" placeholder="Paste your key here" autocomplete="off">
+    </div>
+    <div class="row">
+      <button class="btn btn--sm btn--solid" id="chatKeySave" type="button">Save</button>
+      <button class="btn btn--sm" id="chatKeyClear" type="button">Remove</button>
+    </div>
+    <p class="dim" id="chatSetupHint" style="font-size:.76rem;margin:10px 0 0"></p>
   </div>
   <div class="chat-log" id="chatLog" aria-live="polite"></div>
   <div class="chat-chips" id="chatChips"></div>
@@ -137,9 +150,9 @@
 
 <div class="toast-host" id="toastHost" aria-live="polite" aria-atomic="false"></div>
 
-<script src="assets/js/i18n.js?v=10"></script>
-<script src="assets/js/data.js?v=10"></script>
-<script src="assets/js/core.js?v=10"></script>
-<script src="assets/js/sos.js?v=10"></script>
+<script src="assets/js/i18n.js?v=12"></script>
+<script src="assets/js/data.js?v=12"></script>
+<script src="assets/js/core.js?v=12"></script>
+<script src="assets/js/sos.js?v=12"></script>
 </body>
 </html>

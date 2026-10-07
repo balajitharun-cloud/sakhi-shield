@@ -288,8 +288,190 @@
       body: { message: msg, lang: LANG },
       timeout: 25000
     });
-    return (r && r.reply) ? String(r.reply).trim() : null;
+    // 'unavailable' means the server itself has no working AI right now, so it is
+    // worth trying a key saved on this device before giving up.
+    if (r && r.reply && r.source !== 'unavailable') return String(r.reply).trim();
+    return null;
   }
+
+  const AI_SYSTEM =
+    'You are Sakhi Assistant, a calm, practical safety assistant for women in India. ' +
+    'Give short, concrete, actionable steps. Never blame the user. Mention the relevant ' +
+    'Indian helpline or law when useful (112 emergency, 181 women helpline, 1091, 1930 cyber). ' +
+    'You are not a lawyer or a doctor. Keep answers under 120 words.';
+
+  SS.getAI = () => SS.store.get('ss_ai', { provider: '', key: '', model: '' });
+  SS.setAI = (v) => SS.store.set('ss_ai', v);
+
+  // Guess the provider from the shape of the key, so a pasted key "just works".
+  function detectProvider(key) {
+    const k = String(key || '').trim();
+    if (/^gsk_/.test(k)) return 'groq';
+    if (/^AIza/.test(k)) return 'gemini';
+    if (/^sk-or-/.test(k)) return 'openrouter';
+    if (/^sk-/.test(k)) return 'openai';
+    return null;
+  }
+  SS.detectProvider = detectProvider;
+
+  // Returns { reply } on success or { error } with a human-readable reason.
+  // Providers retire model ids on a schedule, so never trust a hard-coded name.
+  // Ask the provider what it actually serves and pick from that.
+  function preferFlash(names) {
+    const score = (n) => {
+      let s = 0;
+      if (n.indexOf('flash') >= 0) s += 100;
+      if (n.indexOf('lite') >= 0) s += 10;
+      if (n.indexOf('preview') >= 0 || n.indexOf('exp') >= 0) s -= 25;
+      const v = n.match(/(\d+)\.(\d+)/);
+      if (v) s += parseInt(v[1], 10) * 10 + parseInt(v[2], 10);
+      return s;
+    };
+    return names.slice().sort((a, b) => score(b) - score(a));
+  }
+
+  async function discoverModels(provider, key, signal, diag) {
+    try {
+      if (provider === 'gemini') {
+        const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models?key=' +
+          encodeURIComponent(key), { signal });
+        if (!r.ok) { if (diag) diag.listStatus = r.status; return []; }
+        const d = await r.json().catch(() => null);
+        const names = ((d && d.models) || [])
+          .filter((m) => (m.supportedGenerationMethods || []).indexOf('generateContent') >= 0)
+          .map((m) => String(m.name || '').replace(/^models\//, ''))
+          .filter((n) => n && n.indexOf('embedding') < 0 && n.indexOf('aqa') < 0);
+        return preferFlash(names);
+      }
+      const bases = {
+        groq: 'https://api.groq.com/openai/v1',
+        openai: 'https://api.openai.com/v1',
+        openrouter: 'https://openrouter.ai/api/v1'
+      };
+      const base = bases[provider];
+      if (!base) return [];
+      const r = await fetch(base + '/models', {
+        headers: { Authorization: 'Bearer ' + key }, signal
+      });
+      if (!r.ok) { if (diag) diag.listStatus = r.status; return []; }
+      const d = await r.json().catch(() => null);
+      const names = ((d && d.data) || []).map((m) => m.id).filter(Boolean)
+        .filter((n) => !/whisper|guard|tts|embed|moderation|image|audio/i.test(n));
+      return preferFlash(names);
+    } catch (e) {
+      return [];
+    }
+  }
+
+  async function directCall(msg) {
+    const cfg = SS.getAI();
+    const provider = cfg.provider || '';
+    const key = String(cfg.key || '').trim();
+    const configured = String(cfg.model || '').trim();
+    const langName = { en: 'English', hi: 'Hindi', kn: 'Kannada' }[LANG] || 'English';
+    const system = AI_SYSTEM + ' Reply in ' + langName + '.';
+
+    if (!provider) {
+      return { error: 'No AI key saved yet. Tap the gear icon in this chat and paste a free key.' };
+    }
+    if (!provider) {
+      return { error: 'No AI key saved yet.' };
+    }
+    if (!key) {
+      return { error: 'No API key saved for ' + provider + '. Paste the key and press Save.' };
+    }
+
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 25000);
+    const describe = (status, detail) =>
+      provider + ' returned HTTP ' + status + (detail ? ' - ' + detail : '');
+
+    try {
+      // Build the candidate list: what the user chose, then what the provider
+      // actually serves right now, then a small safety net.
+      // 'gemini-flash-latest' is an alias Google keeps pointed at a live model,
+      // so it survives retirements.
+      const SAFETY = {
+        gemini: ['gemini-flash-latest', 'gemini-3.8-flash', 'gemini-2.5-flash', 'gemini-1.5-flash'],
+        groq: ['openai/gpt-oss-20b', 'openai/gpt-oss-120b'],
+        openai: ['gpt-4o-mini', 'gpt-4o'],
+        openrouter: ['meta-llama/llama-3.1-8b-instruct:free']
+      };
+      const diag = {};
+      const discovered = await discoverModels(provider, key, ctrl.signal, diag);
+      let models = (configured ? [configured] : []).concat(discovered, SAFETY[provider] || []);
+      models = models.filter((m, i) => m && models.indexOf(m) === i);
+
+      let last = null;
+      for (const m of models) {
+        if (provider === 'gemini') {
+          const url = 'https://generativelanguage.googleapis.com/v1beta/models/' +
+            m + ':generateContent?key=' + encodeURIComponent(key);
+          const r = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              systemInstruction: { parts: [{ text: system }] },
+              contents: [{ role: 'user', parts: [{ text: msg }] }]
+            }),
+            signal: ctrl.signal
+          });
+          const d = await r.json().catch(() => null);
+          if (r.ok) {
+            const c = d && d.candidates && d.candidates[0] && d.candidates[0].content;
+            const t = c && c.parts && c.parts[0] && c.parts[0].text;
+            if (t) return { reply: String(t).trim(), model: m };
+            last = { error: 'Gemini (' + m + ') returned no text.' };
+            continue;
+          }
+          last = { error: describe(r.status, d && d.error && d.error.message) };
+          if (r.status === 404 || r.status === 400) continue;   // model gone - try the next
+          return last;
+        }
+
+        const bases = {
+          groq: 'https://api.groq.com/openai/v1',
+          openai: 'https://api.openai.com/v1',
+          openrouter: 'https://openrouter.ai/api/v1'
+        };
+        const base = bases[provider];
+        if (!base) return { error: 'Unknown provider: ' + provider };
+        const r = await fetch(base + '/chat/completions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key },
+          body: JSON.stringify({
+            model: m,
+            messages: [{ role: 'system', content: system }, { role: 'user', content: msg }],
+            temperature: 0.3,
+            max_tokens: 400
+          }),
+          signal: ctrl.signal
+        });
+        const d = await r.json().catch(() => null);
+        if (r.ok) {
+          const t = d && d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content;
+          if (t) return { reply: String(t).trim(), model: m };
+          last = { error: provider + ' (' + m + ') returned no text.' };
+          continue;
+        }
+        last = { error: describe(r.status, d && d.error && d.error.message) };
+        if (r.status === 404) continue;   // model retired - try the next
+        return last;
+      }
+      const extra = ' [model list: ' + (discovered.length ? discovered.length + ' found' : 'none') +
+        (diag.listStatus ? ', HTTP ' + diag.listStatus : '') +
+        '; tried: ' + models.slice(0, 3).join(', ') + ']';
+      return last ? { error: last.error + extra }
+                  : { error: provider + ' had no usable model.' + extra };
+    } catch (e) {
+      return { error: (e && e.name === 'AbortError') ? 'Timed out after 25s.' : 'Network error: ' + (e && e.message) };
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  SS.askDirect = async function (msg) { const r = await directCall(msg); return r.reply || null; };
+  SS.askDirectDebug = directCall;
 
   SS.renderChips = function () {
     const host = $('#chatChips');
@@ -344,14 +526,20 @@
     } catch (e) {
       why = e && e.message;
     }
+    if (!answer) {
+      // Nothing from the server - try a key saved on this device.
+      try {
+        const r = await directCall(msg);
+        if (r && r.reply) answer = r.reply;
+        else if (r && r.error) why = why ? why + ' \u00b7 ' + r.error : r.error;
+      } catch (e) { why = why || (e && e.message); }
+    }
     // The bubble is always cleared, whatever happened.
     if (thinking) thinking.remove();
 
     if (!answer) {
-      addMsg(!SS.isBackendLikely()
-        ? 'The assistant needs the server, which is not connected to this site yet.'
-        : 'The assistant could not answer just now' + (why ? ' (' + why + ')' : '') +
-          '. Please try again in a moment.', 'bot');
+      addMsg((why || 'The assistant could not answer just now.') +
+        ' Tap the gear icon above to add a free AI key.', 'bot');
       return;
     }
     addMsg(answer, 'bot');
@@ -367,6 +555,42 @@
   }
 
   /* ---------- boot ---------- */
+  // Assistant settings: a key saved on this device, used when the server cannot
+  // answer (e.g. the backend is not deployed yet). Kept out of the way behind a gear.
+  function wireChatSetup() {
+    const btn = $('#chatSetupBtn'), box = $('#chatSetup'), keyIn = $('#chatKey'), hint = $('#chatSetupHint');
+    if (!btn || !box) return;
+    const say = (t) => { if (hint) hint.textContent = t; };
+    const refresh = () => {
+      const cfg = SS.getAI();
+      if (keyIn) keyIn.value = cfg.key || '';
+      if (cfg.key) {
+        say('A key is saved (' + (cfg.provider || 'unknown') + '). The assistant can answer from this device.');
+      } else {
+        say('No key saved. The assistant can only answer once a key is added or the server has one.');
+      }
+    };
+    btn.addEventListener('click', () => { box.hidden = !box.hidden; if (!box.hidden) refresh(); });
+    const save = $('#chatKeySave');
+    if (save) save.addEventListener('click', () => {
+      const raw = keyIn ? keyIn.value.trim() : '';
+      if (!raw) { SS.toast('Paste a key first', 'err'); return; }
+      const provider = detectProvider(raw);
+      if (!provider) { SS.toast('That does not look like a Groq or Google key', 'err'); return; }
+      SS.setAI({ provider: provider, key: raw, model: '' });
+      refresh();
+      SS.toast('Key saved on this device', 'ok');
+    });
+    const clear = $('#chatKeyClear');
+    if (clear) clear.addEventListener('click', () => {
+      SS.setAI({ provider: '', key: '', model: '' });
+      if (keyIn) keyIn.value = '';
+      refresh();
+      SS.toast('Key removed');
+    });
+    refresh();
+  }
+
   function boot() {
     const themeBtn = $('#themeBtn');
     SS.applyTheme(SS.store.get('ss_theme', 'auto'));
@@ -393,6 +617,8 @@
     if (input) input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') { e.preventDefault(); SS.chatSend(); }
     });
+
+    wireChatSetup();
 
     const navChat = $('#navChatLink');
     if (navChat) navChat.addEventListener('click', (e) => { e.preventDefault(); SS.chatOpen(); });

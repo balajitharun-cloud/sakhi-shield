@@ -598,3 +598,13 @@ html { scroll-padding-top: 84px; }
   .a4-wrap{ background:#fff; padding:0; overflow:visible; }
   .no-print{ display:none !important; }
 }
+
+/* assistant key setup, revealed from the gear in the chat header */
+.chat-setup {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line, rgba(0,0,0,.1));
+  background: var(--bg-soft, rgba(0,0,0,.03));
+}
+.chat-setup[hidden] { display: none; }
+.chat-setup .field { margin-bottom: 8px; }
+.chat-setup label { font-size: .78rem; }

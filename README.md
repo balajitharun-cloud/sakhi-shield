@@ -52,7 +52,7 @@ sakhi-shield/
 - **One page per feature** - home, SOS, helplines, location, contacts, tools, evidence, safety, rights and complaint
 - Mobile-first: 44px touch targets, 16px inputs (no iOS zoom), safe-area insets, responsive complaint sheet
 - Three languages - English, हिंदी and ಕನ್ನಡ - with a switcher in the header; the whole UI, the tips, the rights and the chatbot are translated
-- **Sakhi Assistant** - AI only, and it runs entirely on the server: the browser sends your question to `POST /api/chat` and the AI key never leaves the backend. Set `LLM_PROVIDER` and `LLM_API_KEY` in Render. There is no canned keyword-answer fallback; if the AI service does not respond the assistant says so, and it never leaves a question hanging.
+- **Sakhi Assistant** - AI only. It tries the server first (`POST /api/chat`, where the key can live in environment variables so it works for everyone); if the server is not there or has no key, it falls back to a free key the user pastes into the chat's gear menu, which is stored only on their device. Keys are auto-detected from their shape (Groq `gsk_`, Google `AIza`). There is no canned keyword-answer fallback, and a question can never be left hanging on "Thinking...".
 - **SOS with automatic delivery**: arming it sends your live location to your trusted contacts by itself - no extra tap
 - **Motion sensor**: shake the phone to arm the SOS, with a proper iOS permission request and a sensitivity setting
 - **Camera & recording** - take a photo, or record audio/video as proof. Everything is geo-tagged, timestamped and stored in an on-device vault (IndexedDB); download anything you need for the police. Can auto-start recording when the SOS fires.

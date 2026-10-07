@@ -213,32 +213,68 @@ async function main() {
     check(/Cannot reach the server/.test(err || ''), 'an unreachable server is reported plainly');
   }
 
-  console.log('\nassistant runs on the server only');
+  console.log('\nassistant: server first, then a key on this device');
   {
     const core = fs.readFileSync(path.join(DIR, 'assets/js/core.js'), 'utf8');
-    check(!/SS\.askDirect|directCall|detectProvider|SS\.getAI|SS\.setAI/.test(core),
-      'no client-side AI key machinery is left in the browser');
-    check(!core.includes('text.pollinations.ai') && !core.includes('api.groq.com'),
-      'the browser never calls an AI provider directly');
+    check(core.includes('/api/chat'), 'the assistant calls the server endpoint');
+    check(core.includes('detectProvider'), 'a pasted key is matched to a provider');
+    check(!core.includes('text.pollinations.ai'),
+      'the dead pollinations service is gone from the browser');
+    check(!/localAnswer|CHAT_INTENTS/.test(core), 'there is still no canned-answer fallback');
 
     const { win, doc } = await load('index.html');
     const msgs = () => Array.from(doc.querySelectorAll('#chatLog .msg')).map((n) => n.textContent.trim());
+    const click = (el) => el.dispatchEvent(new win.Event('click', { bubbles: true }));
 
-    win.fetch = async () => ({ ok: true, status: 200, json: async () => ({ reply: 'SERVER OK' }) });
+    // the gear reveals the key field
+    const gear = doc.querySelector('#chatSetupBtn');
+    const box = doc.querySelector('#chatSetup');
+    check(!!gear && !!box && box.hidden === true, 'the assistant settings are hidden behind a gear');
+    click(gear);
+    check(box.hidden === false, 'the gear reveals the settings');
+
+    // a pasted key is recognised and stored
+    doc.querySelector('#chatKey').value = 'gsk_abc123';
+    click(doc.querySelector('#chatKeySave'));
+    check(win.SS.getAI().provider === 'groq', 'detects a Groq key from its shape');
+    check(win.SS.getAI().key === 'gsk_abc123', 'stores the key on the device');
+
+    // an unrecognised key is refused
+    doc.querySelector('#chatKey').value = 'not-a-key';
+    click(doc.querySelector('#chatKeySave'));
+    check(win.SS.getAI().key === 'gsk_abc123', 'an unrecognised key is not saved');
+
+    // a Google key is recognised too
+    doc.querySelector('#chatKey').value = 'AIzaSyExampleKeyValue';
+    click(doc.querySelector('#chatKeySave'));
+    check(win.SS.getAI().provider === 'gemini', 'detects a Google key from its shape');
+
+    // 1. the server answers -> use it
+    win.SS.setAI({ provider: 'groq', key: 'gsk_abc123', model: '' });
+    win.fetch = async () => ({ ok: true, status: 200, json: async () => ({ reply: 'SERVER OK', source: 'ai' }) });
     await win.SS.chatSend('How do I file an FIR?');
-    check(msgs().some((m) => m.includes('SERVER OK')), 'shows the reply the server returned');
+    check(msgs().some((m) => m.includes('SERVER OK')), 'prefers the server when it answers');
     check(!msgs().some((m) => m.includes('Thinking')), 'the thinking bubble is cleared on success');
 
-    // a failing request must never leave the bubble stuck on screen
+    // 2. the server has no AI of its own -> fall through to the saved key
+    win.fetch = async (url) => String(url).includes('/api/chat')
+      ? { ok: true, status: 200, json: async () => ({ reply: 'nope', source: 'unavailable' }) }
+      : { ok: true, status: 200, json: async () => ({ choices: [{ message: { content: 'DIRECT OK' } }] }) };
+    await win.SS.chatSend('and again');
+    check(msgs().some((m) => m.includes('DIRECT OK')), 'falls back to the key saved on this device');
+
+    // 3. nothing works and no key -> explain, and never leave the bubble stuck
+    win.SS.setAI({ provider: '', key: '', model: '' });
     win.fetch = async () => { throw new TypeError('Failed to fetch'); };
     await win.SS.chatSend('hello');
-    check(!msgs().some((m) => m.includes('Thinking')), 'a failed request never leaves "Thinking\u2026" behind');
-    check(msgs().some((m) => /could not answer|not connected/i.test(m)), 'a failed request explains itself');
+    check(!msgs().some((m) => m.includes('Thinking')), 'a total failure never leaves "Thinking\u2026" behind');
+    check(msgs().some((m) => /gear icon/i.test(m)), 'tells the user how to add a key');
 
-    // a non-200 from the server is reported, not swallowed
+    // 4. a non-200 from the server is reported, not swallowed
     win.fetch = async () => ({ ok: false, status: 502, json: async () => ({ error: 'bad gateway' }) });
     await win.SS.chatSend('hello again');
     check(!msgs().some((m) => m.includes('Thinking')), 'an error response still clears the bubble');
+    check(msgs().some((m) => /bad gateway/.test(m)), 'reports the real server error');
   }
   console.log('\nlanguage switching');
   {
