@@ -4,11 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#c81e4a">
-<meta name="description" content="Sakhi Shield - a women safety toolkit. Personal safety toolkit - SOS, helplines, live location, trusted contacts, complaint sheet.">
+<meta name="description" content="Sakhi Shield - a women safety toolkit. SOS with siren, shake-to-SOS and automatic alerts to your trusted contacts.">
 <!-- When the front-end is hosted separately from the API (e.g. GitHub Pages),
      set the backend origin here, or paste it on the Account page. -->
 <meta name="api-base" content="">
-<title>Home &middot; Sakhi Shield</title>
+<title>SOS & alerts &middot; Sakhi Shield</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -45,54 +45,73 @@
 </header>
 
 <main class="wrap">
-  <section id="home">
+  <div class="section-head">
+    <span class="eyebrow">Emergency</span>
+    <h2>SOS &amp; alerts</h2>
+    <p class="dim">Arming the SOS sounds the siren, vibrates, flashes the screen and sends your location to your trusted contacts automatically.</p>
+  </div>
+<section id="sos">
     <div class="hero">
       <div>
         <span class="eyebrow">Personal safety toolkit</span>
         <h1>One tap between you and help.</h1>
         <p class="hero__lead">
-          Sakhi Shield bundles the things you would want in an emergency: a loud siren,
-          a five-second SOS that alerts your trusted contacts with your live location,
-          a fake call to leave an uncomfortable situation, a check-in timer, a formal
-          police complaint sheet, and an assistant that answers your questions.
+          Sakhi Shield bundles the things you'd want in an emergency into one page:
+          a loud siren, a five-second SOS, live location sharing, a fake call to
+          escape an uncomfortable situation, and a check-in timer that alerts your
+          people if you go quiet.
         </p>
         <div class="hero__stats">
           <div class="stat"><b id="statContacts">0</b><span>Trusted contacts</span></div>
-          <div class="stat"><b id="statGeo">&mdash;</b><span>GPS</span></div>
-          <div class="stat"><b id="statAI">AI</b><span>Assistant</span></div>
+          <div class="stat"><b id="statStatus">Ready</b><span>Status</span></div>
+          <div class="stat"><b id="statGeo">—</b><span>GPS</span></div>
         </div>
-        <p style="margin-top:18px"><a class="btn btn--solid" href="sos.html">Open the SOS page &rarr;</a></p>
       </div>
+
       <div class="sos-zone">
         <button class="sos-btn" id="sosBtn" aria-describedby="sosHint">
           <span>
             <span class="sos-btn__label" id="sosLabel">SOS</span>
-            <span class="sos-btn__sub" id="sosHint">Tap to arm &middot; 5s</span>
+            <span class="sos-btn__sub" id="sosHint">Tap to arm · 5s</span>
           </span>
         </button>
         <div class="sos-actions">
-          <button class="btn btn--sm" id="sirenBtn" aria-pressed="false">&#128266; Siren: off</button>
-          <button class="btn btn--sm" id="call112Btn">&#128222; Call 112</button>
+          <button class="btn btn--sm" id="sirenBtn" aria-pressed="false">🔊 Siren: off</button>
+          <button class="btn btn--sm" id="call112Btn">📞 Call 112</button>
+          <button class="btn btn--sm" id="shakeToggleBtn" aria-pressed="false">📳 Shake SOS: off</button>
         </div>
       </div>
     </div>
   </section>
 
-  <section id="hub">
+  <section id="motion">
     <div class="section-head">
-      <span class="eyebrow">Everything, one page each</span>
-      <h2>Where do you want to go?</h2>
+      <span class="eyebrow">Motion sensor</span>
+      <h2>Shake to trigger SOS</h2>
+      <p class="dim">Shake the phone hard to arm the SOS without unlocking it. On iPhone you must allow motion access when the browser asks - tap the button below to grant it.</p>
     </div>
-    <div class="grid grid--3">
-      <a class="card link-card" href="sos.html"><h3>SOS &amp; alerts</h3><p class="dim">Siren, shake-to-SOS, automatic alerts to your contacts and your alert history.</p></a>
-      <a class="card link-card" href="helplines.html"><h3>Helplines</h3><p class="dim">112, 181, 1091, 1930 and every other number you might need, one tap to dial.</p></a>
-      <a class="card link-card" href="location.html"><h3>Live location</h3><p class="dim">Share where you are, or track a journey from start to finish.</p></a>
-      <a class="card link-card" href="contacts.html"><h3>Trusted contacts</h3><p class="dim">Your safety circle - the people who get alerted when SOS fires.</p></a>
-      <a class="card link-card" href="tools.html"><h3>Tools</h3><p class="dim">Fake call, check-in timer, and the motion-sensor settings.</p></a>
-      <a class="card link-card" href="safety.html"><h3>Safety habits</h3><p class="dim">Small, practical things that help.</p></a>
-      <a class="card link-card" href="rights.html"><h3>Your rights</h3><p class="dim">What the law gives you in India.</p></a>
-      <a class="card link-card" href="complaint.html"><h3>Police complaint</h3><p class="dim">Form SS-1 - write a formal complaint and take it with you.</p></a>
-      <a class="card link-card" href="account.html"><h3>Account</h3><p class="dim">Connect the backend, sign in and sync your contacts.</p></a>
+    <div class="card">
+      <div class="row" style="align-items:center">
+        <button class="btn btn--accent" id="motionBtn" aria-pressed="false" type="button">&#128243; Shake-to-SOS: off</button>
+        <select id="shakeLevel" aria-label="Shake sensitivity" style="max-width:200px">
+          <option value="low">Low sensitivity</option>
+          <option value="medium" selected>Medium sensitivity</option>
+          <option value="high">High sensitivity</option>
+        </select>
+      </div>
+      <p class="dim" style="margin:12px 0 0;font-size:.86rem">Status: <b data-motion-status>Off</b></p>
+    </div>
+  </section>
+
+  <section id="history">
+    <div class="section-head">
+      <span class="eyebrow">Alert history</span>
+      <h2>Past alerts</h2>
+      <p class="dim">Alerts you have raised, with their live-location links. Sign in on the Account page to keep this history.</p>
+    </div>
+    <div class="card">
+      <div class="row" style="margin-bottom:12px"><button class="btn btn--sm" id="refreshAlertsBtn" type="button">Refresh</button></div>
+      <div class="hl-list" id="alertList"></div>
     </div>
   </section>
 </main>

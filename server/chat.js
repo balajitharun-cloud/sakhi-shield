@@ -3,18 +3,145 @@
 /**
  * Chat backend for the Sakhi Assistant.
  *
- * If an LLM is configured (LLM_API_KEY) the question is answered by the model,
- * told to reply in the requested language. Otherwise it falls back to a small
- * built-in knowledge base, so the endpoint always returns something useful and
- * the app works with no paid key.
+ * The assistant is backed by an external AI API. Pick one with LLM_PROVIDER:
  *
- * The browser also ships its own localised knowledge base (English/Hindi/Kannada)
- * and prefers it first - it is instant and already translated. This endpoint is
- * the fallback for questions the local base cannot match.
+ *   pollinations  (DEFAULT) free public endpoint - no API key required
+ *   openai        needs LLM_API_KEY
+ *   groq          needs LLM_API_KEY
+ *   openrouter    needs LLM_API_KEY
+ *   anthropic     needs LLM_API_KEY
+ *   gemini        needs LLM_API_KEY
+ *   off           no AI call - use only the built-in knowledge base
+ *
+ * If the provider is unreachable, rate-limited, slow or misconfigured, the
+ * endpoint falls back to a built-in knowledge base, so the assistant always
+ * answers something useful.
+ *
+ * PRIVACY: with any external provider the user's question leaves this server and
+ * goes to that provider. Set LLM_PROVIDER=off if you want questions to stay on
+ * your own infrastructure.
  */
 
-const { LLM_API_KEY, LLM_PROVIDER = 'openai', LLM_MODEL } = process.env;
+const PROVIDER = String(process.env.LLM_PROVIDER || 'pollinations').toLowerCase();
+const KEY = process.env.LLM_API_KEY || '';
+const MODEL = process.env.LLM_MODEL || '';
+const TIMEOUT_MS = Number(process.env.LLM_TIMEOUT_MS || 12000);
 
+const SYSTEM_PROMPT =
+  'You are Sakhi Assistant, a calm, practical safety assistant for women in India. ' +
+  'Give short, concrete, actionable steps. Never blame the user. Mention the relevant ' +
+  'Indian helpline or law when useful (112 emergency, 181 women helpline, 1091, 1930 cyber). ' +
+  'You are not a lawyer or a doctor: for serious matters, advise contacting the police, ' +
+  'a lawyer, or a doctor. Keep answers under 120 words.';
+
+/* ---------- provider registry ---------- */
+const PROVIDERS = {
+  pollinations: {
+    keyless: true,
+    model: () => MODEL || 'openai',
+    request: (model, system, user) => ({
+      url: 'https://text.pollinations.ai/openai',
+      headers: { 'Content-Type': 'application/json' },
+      body: {
+        model,
+        messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
+        temperature: 0.3
+      }
+    }),
+    parse: (d) => d && d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content
+  },
+
+  openai: {
+    model: () => MODEL || 'gpt-4o-mini',
+    request: (model, system, user) => ({
+      url: 'https://api.openai.com/v1/chat/completions',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + KEY },
+      body: {
+        model,
+        messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
+        temperature: 0.3,
+        max_tokens: 400
+      }
+    }),
+    parse: (d) => d && d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content
+  },
+
+  groq: {
+    model: () => MODEL || 'llama-3.1-8b-instant',
+    request: (model, system, user) => ({
+      url: 'https://api.groq.com/openai/v1/chat/completions',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + KEY },
+      body: {
+        model,
+        messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
+        temperature: 0.3,
+        max_tokens: 400
+      }
+    }),
+    parse: (d) => d && d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content
+  },
+
+  openrouter: {
+    model: () => MODEL || 'meta-llama/llama-3.1-8b-instruct:free',
+    request: (model, system, user) => ({
+      url: 'https://openrouter.ai/api/v1/chat/completions',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer ' + KEY,
+        'HTTP-Referer': 'https://github.com/balajitharun-cloud/sakhi-shield',
+        'X-Title': 'Sakhi Shield'
+      },
+      body: {
+        model,
+        messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
+        temperature: 0.3,
+        max_tokens: 400
+      }
+    }),
+    parse: (d) => d && d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content
+  },
+
+  anthropic: {
+    model: () => MODEL || 'claude-3-5-haiku-latest',
+    request: (model, system, user) => ({
+      url: 'https://api.anthropic.com/v1/messages',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': KEY,
+        'anthropic-version': '2023-06-01'
+      },
+      body: { model, system, max_tokens: 400, messages: [{ role: 'user', content: user }] }
+    }),
+    parse: (d) => d && d.content && d.content[0] && d.content[0].text
+  },
+
+  gemini: {
+    model: () => MODEL || 'gemini-1.5-flash',
+    request: (model, system, user) => ({
+      url: 'https://generativelanguage.googleapis.com/v1beta/models/' + model +
+           ':generateContent?key=' + encodeURIComponent(KEY),
+      headers: { 'Content-Type': 'application/json' },
+      body: {
+        systemInstruction: { parts: [{ text: system }] },
+        contents: [{ role: 'user', parts: [{ text: user }] }],
+        generationConfig: { temperature: 0.3, maxOutputTokens: 400 }
+      }
+    }),
+    parse: (d) => d && d.candidates && d.candidates[0] && d.candidates[0].content &&
+                   d.candidates[0].content.parts && d.candidates[0].content.parts[0].text
+  }
+};
+
+function providerReady() {
+  if (PROVIDER === 'off') return false;
+  const p = PROVIDERS[PROVIDER];
+  if (!p) return false;
+  return p.keyless ? true : Boolean(KEY);
+}
+
+const llmConfigured = providerReady();
+
+/* ---------- built-in knowledge base (always available) ---------- */
 const KB = [
   { k: ['follow', 'stalk', 'tail', 'chase'],
     a: "If you think you are being followed:\n• Do not go home. Head to a crowded, well-lit place - a shop, cafe, metro or bus stand.\n• Call 112 or 181 and stay on the line.\n• Share your live location from the Location section with someone you trust.\n• Note the person's description and any vehicle number.\n• If you are in a cab, share the trip and the number plate." },
@@ -42,47 +169,47 @@ const KB = [
     a: "I am the Sakhi Assistant. I can explain your rights, emergency numbers, how to file a complaint, and what to do in situations like being followed or harassed." }
 ];
 
-const FALLBACK = "I am not sure about that one. I can help with: emergency numbers, filing an FIR, your legal rights, online harassment, domestic violence, workplace harassment, safety tips, or using the SOS and fake-call tools.";
+const FALLBACK =
+  "I am not sure about that one. I can help with: emergency numbers, filing an FIR, your " +
+  "legal rights, online harassment, domestic violence, workplace harassment, safety tips, " +
+  "or using the SOS and fake-call tools.";
 
-const SYSTEM_PROMPT =
-  'You are Sakhi Assistant, a calm, practical safety assistant for women in India. ' +
-  'Give short, concrete, actionable steps. Never blame the user. Mention the relevant ' +
-  'Indian helpline or law when useful (112 emergency, 181 women helpline, 1091, 1930 cyber). ' +
-  'You are not a lawyer or a doctor: for serious matters, advise contacting the police, ' +
-  'a lawyer, or a doctor. Keep answers under 120 words.';
-
-function llmEndpoint() {
-  return LLM_PROVIDER === 'groq'
-    ? 'https://api.groq.com/openai/v1/chat/completions'
-    : 'https://api.openai.com/v1/chat/completions';
-}
-
-async function askLLM(message, lang) {
-  if (!LLM_API_KEY) return null;
-  const model = LLM_MODEL || (LLM_PROVIDER === 'groq' ? 'llama-3.1-8b-instant' : 'gpt-4o-mini');
+/* ---------- AI call ---------- */
+async function askAI(message, lang) {
+  if (!providerReady()) return null;
+  const p = PROVIDERS[PROVIDER];
   const langName = { en: 'English', hi: 'Hindi', kn: 'Kannada' }[lang] || 'English';
+  const system = SYSTEM_PROMPT + ' Reply in ' + langName + '.';
+
+  let req;
   try {
-    const res = await fetch(llmEndpoint(), {
+    req = p.request(p.model(), system, message);
+  } catch (e) {
+    console.error('[chat] could not build request:', e.message);
+    return null;
+  }
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  try {
+    const res = await fetch(req.url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + LLM_API_KEY },
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPT + ' Reply in ' + langName + '.' },
-          { role: 'user', content: message }
-        ],
-        temperature: 0.3,
-        max_tokens: 400
-      })
+      headers: req.headers,
+      body: JSON.stringify(req.body),
+      signal: controller.signal
     });
-    if (!res.ok) { console.error('[chat] LLM HTTP ' + res.status); return null; }
+    if (!res.ok) {
+      console.error('[chat] ' + PROVIDER + ' HTTP ' + res.status);
+      return null;
+    }
     const data = await res.json();
-    const text = data && data.choices && data.choices[0] &&
-                 data.choices[0].message && data.choices[0].message.content;
+    const text = p.parse(data);
     return text ? String(text).trim() : null;
   } catch (e) {
-    console.error('[chat] LLM failed:', e.message);
+    console.error('[chat] ' + PROVIDER + ' failed: ' + e.message);
     return null;
+  } finally {
+    clearTimeout(timer);
   }
 }
 
@@ -93,11 +220,11 @@ function kbAnswer(message) {
 }
 
 async function answer(message, lang) {
-  const llm = await askLLM(message, lang);
-  if (llm) return { reply: llm, source: 'llm' };
+  const ai = await askAI(message, lang);
+  if (ai) return { reply: ai, source: 'ai', provider: PROVIDER };
   const kb = kbAnswer(message);
-  if (kb) return { reply: kb, source: 'kb' };
-  return { reply: FALLBACK, source: 'fallback' };
+  if (kb) return { reply: kb, source: 'kb', provider: PROVIDER };
+  return { reply: FALLBACK, source: 'fallback', provider: PROVIDER };
 }
 
-module.exports = { answer, llmConfigured: Boolean(LLM_API_KEY), KB };
+module.exports = { answer, llmConfigured, provider: PROVIDER, KB, PROVIDERS };

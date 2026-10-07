@@ -14,6 +14,9 @@ const http = require('http');
 const tmpDb = path.join(os.tmpdir(), 'sakhi-test-' + Date.now() + '.sqlite');
 process.env.DB_PATH = tmpDb;
 process.env.JWT_SECRET = 'test-secret';
+// Keep the chat test offline and deterministic: exercise the built-in
+// knowledge base rather than calling out to a live AI provider.
+process.env.LLM_PROVIDER = 'off';
 
 const app = require('../server/index.js');
 
@@ -151,9 +154,12 @@ async function main() {
     check(r.data.alert.status === 'resolved', 'public share reflects the resolved status');
 
     console.log('\nchat assistant');
+    const chatMod = require('../server/chat.js');
+    check(Object.keys(chatMod.PROVIDERS).length >= 6, 'chat supports multiple AI providers');
+    check('pollinations' in chatMod.PROVIDERS && 'openai' in chatMod.PROVIDERS, 'includes a keyless provider and OpenAI');
     r = await call('POST', '/api/chat', { message: 'How do I file an FIR?', lang: 'en' });
     check(r.status === 200 && /FIR/.test(r.data.reply), 'chat answers an FIR question');
-    check(r.data.llm === false, 'reports no LLM configured');
+    check(r.data.llm === false, 'reports the AI provider as off in this test run');
     check(r.data.source === 'kb', 'answer came from the built-in knowledge base');
 
     r = await call('POST', '/api/chat', { message: 'I think I am being followed', lang: 'hi' });
@@ -193,12 +199,30 @@ async function main() {
     const home = await raw('GET', base + '/');
     const homeHtml = home.text;
     check(home.status === 200 && homeHtml.includes('Sakhi Shield'), 'serves the frontend at /');
-    check(homeHtml.includes('id="account"'), 'frontend includes the account section');
     check(homeHtml.includes('data-lang="hi"') && homeHtml.includes('data-lang="kn"'), 'frontend has the EN/HI/KN switcher');
-    check(homeHtml.includes('const I18N ='), 'frontend ships the translation dictionary');
     check(homeHtml.includes('chat-panel') && homeHtml.includes('chat-fab'), 'frontend has the chatbot');
-    check(homeHtml.includes('Form SS-1'), 'frontend has the police complaint sheet');
-    check(homeHtml.includes('/api/sos'), 'frontend is wired to the SOS endpoint');
+    check(homeHtml.includes('assets/js/i18n.js'), 'frontend loads the shared translation dictionary');
+    check(homeHtml.includes('link-card'), 'home page links to the feature pages');
+
+    const pages = ['sos.html', 'helplines.html', 'location.html', 'contacts.html', 'tools.html',
+                   'safety.html', 'rights.html', 'complaint.html', 'account.html'];
+    let allPages = true;
+    for (const p of pages) {
+      const r2 = await raw('GET', base + '/' + p);
+      if (r2.status !== 200 || !r2.text.includes('Sakhi Shield')) allPages = false;
+    }
+    check(allPages, 'all 9 feature pages are served as separate pages');
+
+    const comp = await raw('GET', base + '/complaint.html');
+    check(comp.text.includes('Form SS-1'), 'complaint page has the police complaint sheet');
+    const acct = await raw('GET', base + '/account.html');
+    check(acct.text.includes('id="serverUrl"'), 'account page has the backend URL field');
+    const sosjs = await raw('GET', base + '/assets/js/sos.js');
+    check(sosjs.text.includes('/api/sos'), 'frontend is wired to the SOS endpoint');
+    check(sosjs.text.includes('requestPermission'), 'frontend requests motion-sensor permission');
+    check(sosjs.text.includes('autoNotify'), 'frontend auto-sends the SOS to contacts');
+    const corejs = await raw('GET', base + '/assets/js/core.js');
+    check(corejs.text.includes('/api/chat'), 'frontend is wired to the AI chat endpoint');
 
     // second user cannot see the first user's data
     r = await call('POST', '/api/auth/register', { name: 'Other', email: 'other@example.com', password: 'secret123' });

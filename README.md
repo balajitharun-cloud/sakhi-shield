@@ -9,18 +9,39 @@ reports, and publishing a live-location link others can open.
 
 ```
 sakhi-shield/
-├── docs/index.html       the whole front-end (HTML + CSS + JS, no build step)
-│                         also served by GitHub Pages
+├── docs/                     the front-end - one page per feature
+│   ├── index.html            home: SOS button + a link to every feature
+│   ├── sos.html              SOS, siren, motion sensor, alert history
+│   ├── helplines.html        emergency numbers
+│   ├── location.html         live location + journey tracking
+│   ├── contacts.html         trusted contacts
+│   ├── tools.html            fake call, check-in timer, sensor settings
+│   ├── safety.html           safety tips
+│   ├── rights.html           legal rights (India)
+│   ├── complaint.html        Form SS-1 police complaint sheet
+│   ├── account.html          account + backend connection
+│   └── assets/
+│       ├── css/style.css     all styling, shared by every page
+│       └── js/
+│           ├── i18n.js       the EN/HI/KN dictionary (291 strings)
+│           ├── data.js       helplines, tips, rights, chatbot knowledge base
+│           ├── core.js       utils, theme, i18n engine, API client, chatbot
+│           ├── sos.js        SOS, siren, motion sensor, auto-notify
+│           ├── location.js   live location and journey tracking
+│           ├── contacts.js   trusted contacts
+│           ├── tools.js      fake call + check-in timer
+│           ├── complaint.js  the complaint sheet
+│           └── account.js    account and backend URL
 ├── server/
 │   ├── index.js          Express app + all routes
 │   ├── db.js             SQLite schema and queries (better-sqlite3)
 │   ├── auth.js           bcrypt hashing + JWT bearer tokens
 │   ├── notify.js         email (nodemailer) + SMS (Twilio), with graceful fallback
-│   ├── chat.js           chatbot: LLM if configured, else a built-in knowledge base
+│   ├── chat.js           AI chat: 6 providers, or a built-in knowledge base
 │   └── sharePage.js      the public live-location viewer page
 ├── test/
-│   ├── api.test.js       end-to-end API test (59 checks)
-│   └── i18n.test.js      front-end test: language switching, complaint sheet, chatbot
+│   ├── api.test.js       end-to-end API test (66 checks)
+│   └── i18n.test.js      front-end test across all 10 pages (48 checks)
 ├── render.yaml           one-click Render blueprint
 └── .env.example          every config knob, documented
 ```
@@ -28,18 +49,19 @@ sakhi-shield/
 ## Features
 
 **Front-end (works offline, no server needed)**
+- **One page per feature** - home, SOS, helplines, location, contacts, tools, safety, rights, complaint and account
 - Mobile-first: 44px touch targets, 16px inputs (no iOS zoom), safe-area insets, responsive complaint sheet
-- Three languages — English, हिंदी and ಕನ್ನಡ — with a switcher in the header; the whole UI, the tips, the rights and the chatbot are translated
-- **Sakhi Assistant chatbot** with a localised knowledge base that works with no server, plus an optional LLM behind `/api/chat`
-- SOS button with a 5-second cancellable countdown
+- Three languages - English, हिंदी and ಕನ್ನಡ - with a switcher in the header; the whole UI, the tips, the rights and the chatbot are translated
+- **Sakhi Assistant chatbot** backed by a live AI API, with a localised knowledge base as the offline fallback
+- **SOS with automatic delivery**: arming it sends your live location to your trusted contacts by itself - no extra tap
+- **Motion sensor**: shake the phone to arm the SOS, with a proper iOS permission request and a sensitivity setting
 - Panic siren generated with the Web Audio API
 - Emergency helplines (India): 112, 100, 101, 102, 181, 1091, NCW, 1098, Tele-MANAS 14416, 1930
 - Live location, journey tracking, map preview
 - Trusted contacts stored in localStorage
 - Fake call, check-in timer
-- Shake-to-SOS (device motion), vibration, screen flash
 - Safety tips and legal rights (India)
-- **Form SS-1 police complaint sheet** — a formal, numbered complaint form in the
+- **Form SS-1 police complaint sheet** - a formal, numbered complaint form in the
   style of an official report sheet, which generates a written complaint you can
   hand to the police, email, or save
 
@@ -113,8 +135,9 @@ All authenticated routes take `Authorization: Bearer <token>`.
 3. Add your secrets in **Environment** if you want real alerts:
    - Email: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM`
    - SMS: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER`
-   - Chatbot: `LLM_API_KEY` (plus `LLM_PROVIDER` = `openai` or `groq`, `LLM_MODEL`).
-     With no key the chatbot still works from its built-in knowledge base.
+   - Chatbot: the AI provider. The default `pollinations` is a free public
+     endpoint needing no key; `openai`/`groq`/`openrouter`/`anthropic`/`gemini`
+     need `LLM_API_KEY`; `off` uses only the built-in knowledge base.
 4. Your app is live at `https://<service-name>.onrender.com`.
 
 **Free-tier caveats:** the instance sleeps after ~15 minutes idle (first request

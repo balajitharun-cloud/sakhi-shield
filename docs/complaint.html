@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="auto">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#c81e4a">
+<meta name="description" content="Sakhi Shield - a women safety toolkit. Form SS-1 - a formal police complaint sheet.">
+<!-- When the front-end is hosted separately from the API (e.g. GitHub Pages),
+     set the backend origin here, or paste it on the Account page. -->
+<meta name="api-base" content="">
+<title>Police complaint &middot; Sakhi Shield</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap topbar__inner">
+    <a class="brand" href="index.html">
+      <span class="brand__mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l7 3v6c0 5-3 8-7 11-4-3-7-6-7-11V5l7-3z"/><path d="M9 12l2 2 4-4"/></svg></span>
+      <span class="brand__name">Sakhi Shield</span>
+    </a>
+    <nav class="nav" aria-label="Sections">
+      <a href="index.html">Home</a>
+      <a href="sos.html">SOS</a>
+      <a href="helplines.html">Helplines</a>
+      <a href="location.html">Location</a>
+      <a href="contacts.html">Contacts</a>
+      <a href="tools.html">Tools</a>
+      <a href="safety.html">Safety</a>
+      <a href="rights.html">Rights</a>
+      <a href="complaint.html">Report</a>
+      <a href="account.html">Account</a>
+      <a href="#" id="navChatLink">Chat</a>
+    </nav>
+    <div class="lang" role="group" aria-label="Language">
+      <button class="lang__btn is-on" data-lang="en" type="button">EN</button>
+      <button class="lang__btn" data-lang="hi" type="button">&#2361;&#2367;&#2306;</button>
+      <button class="lang__btn" data-lang="kn" type="button">&#3221;</button>
+    </div>
+    <button class="icon-btn" id="themeBtn" title="Switch theme" aria-label="Switch colour theme">&#127763;</button>
+  </div>
+</header>
+
+<main class="wrap">
+<section id="report">
+    <div class="section-head">
+      <span class="eyebrow">Police complaint sheet</span>
+      <h2>File a written complaint</h2>
+      <p class="dim">Fill this the way an official complaint sheet is written. It produces a formal complaint text you can hand in, email, or keep as a record.</p>
+    </div>
+    <div class="grid grid--2">
+      <div class="sheet" id="complaintSheet">
+        <div class="sheet__band">
+          <b>Form SS-1 &middot; Complaint of offence</b>
+          <span id="sheetRef">REF: —</span>
+        </div>
+        <div class="sheet__note">To be submitted to the Station House Officer, concerned police station</div>
+        <div class="sheet__body">
+          <div class="sheet__row"><div class="sheet__num">01</div>
+            <label class="sheet__label" for="cName2">Complainant name</label>
+            <div class="sheet__field"><input id="cName2" placeholder="Full name" maxlength="80" autocomplete="name"></div></div>
+          <div class="sheet__row"><div class="sheet__num">02</div>
+            <label class="sheet__label" for="cPhone2">Contact number</label>
+            <div class="sheet__field"><input id="cPhone2" placeholder="+91 …" inputmode="tel" maxlength="20" autocomplete="tel"></div></div>
+          <div class="sheet__row"><div class="sheet__num">03</div>
+            <label class="sheet__label" for="cAddr">Address</label>
+            <div class="sheet__field"><input id="cAddr" placeholder="House, street, town" maxlength="160"></div></div>
+          <div class="sheet__row"><div class="sheet__num">04</div>
+            <label class="sheet__label" for="cWhen">Date &amp; time of incident</label>
+            <div class="sheet__field"><input id="cWhen" type="datetime-local"></div></div>
+          <div class="sheet__row"><div class="sheet__num">05</div>
+            <label class="sheet__label" for="cPlace">Place of incident</label>
+            <div class="sheet__field"><input id="cPlace" placeholder="Location / landmark" maxlength="160"></div></div>
+          <div class="sheet__row"><div class="sheet__num">06</div>
+            <label class="sheet__label" for="cStation">Police station / district</label>
+            <div class="sheet__field"><input id="cStation" placeholder="Nearest station" maxlength="120"></div></div>
+          <div class="sheet__row"><div class="sheet__num">07</div>
+            <label class="sheet__label" for="cOffence">Nature of offence</label>
+            <div class="sheet__field"><select id="cOffence">
+              <option>Stalking / following</option><option>Physical assault</option>
+              <option>Sexual harassment</option><option>Domestic violence</option>
+              <option>Cyber harassment / online abuse</option><option>Criminal intimidation / threats</option>
+              <option>Eve-teasing / obscene behaviour</option><option>Other</option></select></div></div>
+          <div class="sheet__row"><div class="sheet__num">08</div>
+            <label class="sheet__label" for="cPeople">Persons involved</label>
+            <div class="sheet__field"><input id="cPeople" placeholder="Names / descriptions" maxlength="240"></div></div>
+          <div class="sheet__row"><div class="sheet__num">09</div>
+            <label class="sheet__label" for="cWitness">Witnesses, if any</label>
+            <div class="sheet__field"><input id="cWitness" placeholder="Names / contact" maxlength="240"></div></div>
+          <div class="sheet__row"><div class="sheet__num">10</div>
+            <label class="sheet__label" for="cDesc">Description of incident</label>
+            <div class="sheet__field"><textarea id="cDesc" rows="4" placeholder="What happened, in your own words…" maxlength="3000"></textarea></div></div>
+          <div class="sheet__row"><div class="sheet__num">11</div>
+            <label class="sheet__label" for="cInjury">Injury or property damage</label>
+            <div class="sheet__field"><input id="cInjury" placeholder="None / describe" maxlength="200"></div></div>
+          <div class="sheet__row"><div class="sheet__num">12</div>
+            <label class="sheet__label" for="cAction">Action requested</label>
+            <div class="sheet__field"><select id="cAction">
+              <option>Register an FIR</option><option>Take legal action against the offender</option>
+              <option>Protection order</option><option>Mediation / counselling</option><option>Other</option></select></div></div>
+          <div class="sheet__row"><div class="sheet__num">13</div>
+            <label class="sheet__label" for="cPrev">Complaint made earlier</label>
+            <div class="sheet__field"><select id="cPrev"><option>No</option><option>Yes</option></select></div></div>
+        </div>
+        <div class="sheet__foot">
+          <label class="sheet__decl">
+            <input type="checkbox" id="cDeclare">
+            <span>I declare that the information given above is true to the best of my knowledge and belief.</span>
+          </label>
+          <div class="sheet__sign">
+            <div>Signature of complainant</div>
+            <div>Date</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="complaint-out" id="reportOut">Your complaint text will appear here.</div>
+        <div class="row" style="margin-top:12px">
+          <button class="btn btn--sm btn--solid" id="reportGenBtn">Generate complaint</button>
+          <button class="btn btn--sm" id="reportCopyBtn">Copy</button>
+          <button class="btn btn--sm" id="reportDownloadBtn">Download .txt</button>
+          <button class="btn btn--sm" id="reportCloudBtn">Save to cloud</button>
+          <button class="btn btn--sm" id="reportClearBtn">Clear</button>
+        </div>
+        <p class="dim" style="font-size:.76rem;margin:12px 0 0" id="complaintHint"></p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  <div class="wrap">
+    <span>Sakhi Shield &mdash; a demo safety toolkit. Works offline; your data never leaves this device.</span>
+    <span class="mono">In a real emergency, call <b>112</b>.</span>
+  </div>
+</footer>
+
+
+
+<button class="chat-fab" id="chatFab" aria-label="Open the safety assistant">&#128172;</button>
+<div class="chat-panel" id="chatPanel" role="dialog" aria-label="Safety assistant">
+  <div class="chat-head">
+    <span class="cdot" aria-hidden="true"></span>
+    <b id="chatTitle">Sakhi Assistant</b>
+    <button class="x" id="chatClose" aria-label="Close chat">&#10005;</button>
+  </div>
+  <div class="chat-log" id="chatLog" aria-live="polite"></div>
+  <div class="chat-chips" id="chatChips"></div>
+  <div class="chat-input">
+    <input id="chatText" placeholder="Ask about safety, rights, or what to do&hellip;" maxlength="400" autocomplete="off" aria-label="Message">
+    <button id="chatSend" aria-label="Send message">&#10148;</button>
+  </div>
+</div>
+
+<div class="toast-host" id="toastHost" aria-live="polite" aria-atomic="false"></div>
+
+<script src="assets/js/i18n.js"></script>
+<script src="assets/js/data.js"></script>
+<script src="assets/js/core.js"></script>
+<script src="assets/js/complaint.js"></script>
+</body>
+</html>

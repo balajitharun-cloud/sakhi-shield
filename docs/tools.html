@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="auto">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#c81e4a">
+<meta name="description" content="Sakhi Shield - a women safety toolkit. Fake call, check-in timer and motion-sensor settings.">
+<!-- When the front-end is hosted separately from the API (e.g. GitHub Pages),
+     set the backend origin here, or paste it on the Account page. -->
+<meta name="api-base" content="">
+<title>Tools &middot; Sakhi Shield</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap topbar__inner">
+    <a class="brand" href="index.html">
+      <span class="brand__mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l7 3v6c0 5-3 8-7 11-4-3-7-6-7-11V5l7-3z"/><path d="M9 12l2 2 4-4"/></svg></span>
+      <span class="brand__name">Sakhi Shield</span>
+    </a>
+    <nav class="nav" aria-label="Sections">
+      <a href="index.html">Home</a>
+      <a href="sos.html">SOS</a>
+      <a href="helplines.html">Helplines</a>
+      <a href="location.html">Location</a>
+      <a href="contacts.html">Contacts</a>
+      <a href="tools.html">Tools</a>
+      <a href="safety.html">Safety</a>
+      <a href="rights.html">Rights</a>
+      <a href="complaint.html">Report</a>
+      <a href="account.html">Account</a>
+      <a href="#" id="navChatLink">Chat</a>
+    </nav>
+    <div class="lang" role="group" aria-label="Language">
+      <button class="lang__btn is-on" data-lang="en" type="button">EN</button>
+      <button class="lang__btn" data-lang="hi" type="button">&#2361;&#2367;&#2306;</button>
+      <button class="lang__btn" data-lang="kn" type="button">&#3221;</button>
+    </div>
+    <button class="icon-btn" id="themeBtn" title="Switch theme" aria-label="Switch colour theme">&#127763;</button>
+  </div>
+</header>
+
+<main class="wrap">
+<section id="tools">
+    <div class="section-head">
+      <span class="eyebrow">Tools</span>
+      <h2>Fake call, check-in timer &amp; more</h2>
+    </div>
+    <div class="grid grid--3">
+
+      <div class="card">
+        <h3>Fake call</h3>
+        <p class="dim" style="font-size:.84rem">A ringing phone is a good excuse to leave. Choose a name and delay.</p>
+        <div class="field">
+          <label for="callerName">Caller shows as</label>
+          <input id="callerName" value="Home" maxlength="24">
+        </div>
+        <div class="field">
+          <label for="callDelay">Ring after (seconds)</label>
+          <input id="callDelay" type="number" value="10" min="1" max="300" inputmode="numeric">
+        </div>
+        <div class="row">
+          <button class="btn btn--accent" id="fakeCallBtn">Ring now</button>
+          <button class="btn" id="fakeCallTimerBtn">Schedule</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Check-in timer</h3>
+        <p class="dim" style="font-size:.84rem">Set a timer. If you don't check in before it ends, the app nudges you to alert your circle.</p>
+        <div class="timer-wrap">
+          <div class="ring">
+            <svg viewBox="0 0 120 120" aria-hidden="true">
+              <circle class="ring__track" cx="60" cy="60" r="52"></circle>
+              <circle class="ring__bar" id="ringBar" cx="60" cy="60" r="52"
+                      stroke-dasharray="326.7" stroke-dashoffset="0"></circle>
+            </svg>
+            <div class="ring__label">
+              <div class="ring__time mono" id="timerTime">00:00</div>
+              <div class="ring__cap">remaining</div>
+            </div>
+          </div>
+          <div class="row" style="width:100%">
+            <select id="timerPreset" aria-label="Timer length">
+              <option value="5">5 minutes</option>
+              <option value="15" selected>15 minutes</option>
+              <option value="30">30 minutes</option>
+              <option value="60">1 hour</option>
+              <option value="custom">Custom…</option>
+            </select>
+            <input id="timerCustom" type="number" min="1" max="480" placeholder="min" inputmode="numeric" hidden>
+          </div>
+          <div class="row" style="width:100%">
+            <button class="btn btn--solid" id="timerStartBtn">Start</button>
+            <button class="btn" id="timerSafeBtn">I'm safe ✓</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Alerts &amp; sensors</h3>
+        <div class="switch">
+          <div class="switch__text"><b>Auto-share location on SOS</b><span>Fetch GPS when SOS fires</span></div>
+          <button class="toggle" id="tgAutoLoc" role="switch" aria-checked="true" aria-label="Auto share location on SOS"></button>
+        </div>
+        <div class="switch">
+          <div class="switch__text"><b>Vibrate on SOS</b><span>Where the device supports it</span></div>
+          <button class="toggle" id="tgVibrate" role="switch" aria-checked="true" aria-label="Vibrate on SOS"></button>
+        </div>
+        <div class="switch">
+          <div class="switch__text"><b>Flash screen on SOS</b><span>High-visibility alert</span></div>
+          <button class="toggle" id="tgFlash" role="switch" aria-checked="true" aria-label="Flash screen on SOS"></button>
+        </div>
+        <div class="switch">
+          <div class="switch__text"><b>Shake to trigger SOS</b><span data-motion-status>Shake the phone hard, 3×</span></div>
+          <button class="toggle" id="tgShake" data-motion role="switch" aria-checked="false" aria-label="Shake to trigger SOS"></button>
+        </div>
+      </div>
+
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  <div class="wrap">
+    <span>Sakhi Shield &mdash; a demo safety toolkit. Works offline; your data never leaves this device.</span>
+    <span class="mono">In a real emergency, call <b>112</b>.</span>
+  </div>
+</footer>
+
+<!-- ===================== FAKE CALL OVERLAY ===================== -->
+<div class="overlay" id="fakeCallOverlay">
+  <div class="caller">
+    <div class="caller__avatar" id="fcAvatar" aria-hidden="true">H</div>
+    <div class="caller__name" id="fcName">Home</div>
+    <div class="caller__sub">Incoming call…</div>
+    <div class="caller__actions">
+      <button class="call-act call-act--no" id="fcDecline" aria-label="Decline call">✕</button>
+      <button class="call-act call-act--yes" id="fcAccept" aria-label="Accept call">✓</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== CHECK-IN DUE OVERLAY ===================== -->
+<div class="overlay" id="checkinOverlay" role="alertdialog" aria-modal="true" aria-labelledby="ciTitle">
+  <div class="modal">
+    <span class="eyebrow">Check-in due</span>
+    <h2 id="ciTitle">You didn't check in.</h2>
+    <p class="dim">If you're fine, tap “I'm safe”. Otherwise let your circle know where you are.</p>
+    <div class="modal__actions">
+      <button class="btn btn--solid" id="ciSafe">I'm safe ✓</button>
+      <button class="btn btn--accent" id="ciAlert">Alert contacts + share location</button>
+    </div>
+  </div>
+</div>
+
+<button class="chat-fab" id="chatFab" aria-label="Open the safety assistant">&#128172;</button>
+<div class="chat-panel" id="chatPanel" role="dialog" aria-label="Safety assistant">
+  <div class="chat-head">
+    <span class="cdot" aria-hidden="true"></span>
+    <b id="chatTitle">Sakhi Assistant</b>
+    <button class="x" id="chatClose" aria-label="Close chat">&#10005;</button>
+  </div>
+  <div class="chat-log" id="chatLog" aria-live="polite"></div>
+  <div class="chat-chips" id="chatChips"></div>
+  <div class="chat-input">
+    <input id="chatText" placeholder="Ask about safety, rights, or what to do&hellip;" maxlength="400" autocomplete="off" aria-label="Message">
+    <button id="chatSend" aria-label="Send message">&#10148;</button>
+  </div>
+</div>
+
+<div class="toast-host" id="toastHost" aria-live="polite" aria-atomic="false"></div>
+
+<script src="assets/js/i18n.js"></script>
+<script src="assets/js/data.js"></script>
+<script src="assets/js/core.js"></script>
+<script src="assets/js/tools.js"></script>
+<script src="assets/js/sos.js"></script>
+</body>
+</html>

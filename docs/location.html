@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="auto">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#c81e4a">
+<meta name="description" content="Sakhi Shield - a women safety toolkit. Share your live location and track a journey.">
+<!-- When the front-end is hosted separately from the API (e.g. GitHub Pages),
+     set the backend origin here, or paste it on the Account page. -->
+<meta name="api-base" content="">
+<title>Live location &middot; Sakhi Shield</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap topbar__inner">
+    <a class="brand" href="index.html">
+      <span class="brand__mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l7 3v6c0 5-3 8-7 11-4-3-7-6-7-11V5l7-3z"/><path d="M9 12l2 2 4-4"/></svg></span>
+      <span class="brand__name">Sakhi Shield</span>
+    </a>
+    <nav class="nav" aria-label="Sections">
+      <a href="index.html">Home</a>
+      <a href="sos.html">SOS</a>
+      <a href="helplines.html">Helplines</a>
+      <a href="location.html">Location</a>
+      <a href="contacts.html">Contacts</a>
+      <a href="tools.html">Tools</a>
+      <a href="safety.html">Safety</a>
+      <a href="rights.html">Rights</a>
+      <a href="complaint.html">Report</a>
+      <a href="account.html">Account</a>
+      <a href="#" id="navChatLink">Chat</a>
+    </nav>
+    <div class="lang" role="group" aria-label="Language">
+      <button class="lang__btn is-on" data-lang="en" type="button">EN</button>
+      <button class="lang__btn" data-lang="hi" type="button">&#2361;&#2367;&#2306;</button>
+      <button class="lang__btn" data-lang="kn" type="button">&#3221;</button>
+    </div>
+    <button class="icon-btn" id="themeBtn" title="Switch theme" aria-label="Switch colour theme">&#127763;</button>
+  </div>
+</header>
+
+<main class="wrap">
+<section id="location">
+    <div class="section-head">
+      <span class="eyebrow">Live location</span>
+      <h2>Share where you are</h2>
+      <p class="dim">Grab your GPS coordinates, copy a Google Maps link, or send it straight to your trusted contacts.</p>
+    </div>
+    <div class="grid grid--2">
+      <div class="card">
+        <div class="row" style="margin-bottom:12px">
+          <button class="btn btn--solid" id="getLocBtn">📍 Get my location</button>
+          <button class="btn" id="watchBtn" aria-pressed="false">🛰 Track journey: off</button>
+        </div>
+        <div class="loc-box mono" id="locOut">No location yet — tap “Get my location”.</div>
+        <div class="row" style="margin-top:12px">
+          <button class="btn btn--sm" id="copyLocBtn">Copy link</button>
+          <button class="btn btn--sm" id="shareLocBtn">Share</button>
+          <button class="btn btn--sm" id="waLocBtn">Send on WhatsApp</button>
+          <button class="btn btn--sm" id="smsLocBtn">Send SMS</button>
+        </div>
+        <p class="dim" style="font-size:.78rem;margin-top:12px;margin-bottom:0" id="journeyInfo"></p>
+      </div>
+      <div class="card" style="padding:12px">
+        <div class="mini-map" id="mapBox">
+          <div class="placeholder">Your map preview appears here once location is shared.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  <div class="wrap">
+    <span>Sakhi Shield &mdash; a demo safety toolkit. Works offline; your data never leaves this device.</span>
+    <span class="mono">In a real emergency, call <b>112</b>.</span>
+  </div>
+</footer>
+
+
+
+<button class="chat-fab" id="chatFab" aria-label="Open the safety assistant">&#128172;</button>
+<div class="chat-panel" id="chatPanel" role="dialog" aria-label="Safety assistant">
+  <div class="chat-head">
+    <span class="cdot" aria-hidden="true"></span>
+    <b id="chatTitle">Sakhi Assistant</b>
+    <button class="x" id="chatClose" aria-label="Close chat">&#10005;</button>
+  </div>
+  <div class="chat-log" id="chatLog" aria-live="polite"></div>
+  <div class="chat-chips" id="chatChips"></div>
+  <div class="chat-input">
+    <input id="chatText" placeholder="Ask about safety, rights, or what to do&hellip;" maxlength="400" autocomplete="off" aria-label="Message">
+    <button id="chatSend" aria-label="Send message">&#10148;</button>
+  </div>
+</div>
+
+<div class="toast-host" id="toastHost" aria-live="polite" aria-atomic="false"></div>
+
+<script src="assets/js/i18n.js"></script>
+<script src="assets/js/data.js"></script>
+<script src="assets/js/core.js"></script>
+<script src="assets/js/location.js"></script>
+</body>
+</html>
