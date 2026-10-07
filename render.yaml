@@ -1,0 +1,27 @@
+# Render Blueprint - deploys the Sakhi Shield backend as a free web service.
+# Docs: https://render.com/docs/blueprint-spec
+#
+# Note on the free tier: the filesystem is EPHEMERAL, so the SQLite file is
+# wiped on every redeploy or restart. That is fine for a demo. For durable data,
+# attach a paid persistent disk or switch db.js to Postgres.
+services:
+  - type: web
+    name: sakhi-shield
+    runtime: node
+    plan: free
+    region: singapore          # closest Render region to India
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true    # Render generates a strong random secret
+      - key: DB_PATH
+        value: ./data/sakhi.sqlite
+      - key: CORS_ORIGIN
+        value: "*"
+      # To actually send alerts, add these in the Render dashboard:
+      #   SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, MAIL_FROM
+      #   TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER
