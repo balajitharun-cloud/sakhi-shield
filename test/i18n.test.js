@@ -202,6 +202,55 @@ async function main() {
     win.SS.setAI({ provider: 'groq', key: '', model: '' });
     const nokey = await win.SS.askDirectDebug('hi');
     check(/No API key saved/i.test(nokey.error || ''), 'explains when no key is saved');
+
+    // --- runtime model discovery: providers retire ids, so ask what exists ---
+    win.SS.setAI({ provider: 'gemini', key: 'gk', model: '' });
+    const tried = [];
+    win.fetch = async (url) => {
+      if (url.includes('/models?')) {
+        return { ok: true, status: 200, json: async () => ({ models: [
+          { name: 'models/gemini-1.5-flash', supportedGenerationMethods: ['generateContent'] },
+          { name: 'models/gemini-3.8-flash', supportedGenerationMethods: ['generateContent'] },
+          { name: 'models/embedding-001', supportedGenerationMethods: ['embedContent'] }
+        ] }) };
+      }
+      tried.push(url);
+      return { ok: true, status: 200, json: async () => ({ candidates: [{ content: { parts: [{ text: 'DISCOVERED OK' }] } }] }) };
+    };
+    const disc = await win.SS.askDirectDebug('hi');
+    check(disc.reply === 'DISCOVERED OK', 'discovers a working model at runtime');
+    check(disc.model === 'gemini-3.8-flash', 'picks the newest flash model, not the retired one');
+    check(!tried.some((u) => u.includes('gemini-1.5-flash')), 'never even tries the retired model');
+
+    win.SS.setAI({ provider: 'groq', key: 'gsk_x', model: '' });
+    let groqBody = null;
+    win.fetch = async (url, opts) => {
+      if (url.endsWith('/models')) {
+        return { ok: true, status: 200, json: async () => ({ data: [
+          { id: 'openai/gpt-oss-20b' }, { id: 'whisper-large-v3' }, { id: 'llama-guard-3-8b' }
+        ] }) };
+      }
+      groqBody = JSON.parse(opts.body);
+      return { ok: true, status: 200, json: async () => ({ choices: [{ message: { content: 'GROQ OK' } }] }) };
+    };
+    const g = await win.SS.askDirectDebug('hi');
+    check(g.reply === 'GROQ OK', 'discovers a working Groq model');
+    check(g.model === 'openai/gpt-oss-20b', 'skips whisper/guard models and picks a chat model');
+    check(groqBody && groqBody.model === 'openai/gpt-oss-20b', 'sends the discovered model id in the request');
+
+    // a retired id the user pinned still falls through to a working one
+    win.SS.setAI({ provider: 'groq', key: 'gsk_x', model: 'llama-3.1-8b-instant' });
+    win.fetch = async (url, opts) => {
+      if (url.endsWith('/models')) return { ok: true, status: 200, json: async () => ({ data: [{ id: 'openai/gpt-oss-20b' }] }) };
+      const b = JSON.parse(opts.body);
+      if (b.model === 'llama-3.1-8b-instant') {
+        return { ok: false, status: 404, json: async () => ({ error: { message: 'does not exist' } }) };
+      }
+      return { ok: true, status: 200, json: async () => ({ choices: [{ message: { content: 'FALLTHROUGH OK' } }] }) };
+    };
+    const fb = await win.SS.askDirectDebug('hi');
+    check(fb.reply === 'FALLTHROUGH OK', 'falls through a pinned-but-retired model to a working one');
+    check(fb.model === 'openai/gpt-oss-20b', 'reports which model actually answered');
   }
   {
     const { doc } = await load('index.html');

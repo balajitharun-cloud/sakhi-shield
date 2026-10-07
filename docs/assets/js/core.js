@@ -273,11 +273,59 @@
   SS.detectProvider = detectProvider;
 
   // Returns { reply } on success or { error } with a human-readable reason.
+  // Providers retire model ids on a schedule, so never trust a hard-coded name.
+  // Ask the provider what it actually serves and pick from that.
+  function preferFlash(names) {
+    const score = (n) => {
+      let s = 0;
+      if (n.indexOf('flash') >= 0) s += 100;
+      if (n.indexOf('lite') >= 0) s += 10;
+      if (n.indexOf('preview') >= 0 || n.indexOf('exp') >= 0) s -= 25;
+      const v = n.match(/(\d+)\.(\d+)/);
+      if (v) s += parseInt(v[1], 10) * 10 + parseInt(v[2], 10);
+      return s;
+    };
+    return names.slice().sort((a, b) => score(b) - score(a));
+  }
+
+  async function discoverModels(provider, key, signal) {
+    try {
+      if (provider === 'gemini') {
+        const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models?key=' +
+          encodeURIComponent(key), { signal });
+        if (!r.ok) return [];
+        const d = await r.json().catch(() => null);
+        const names = ((d && d.models) || [])
+          .filter((m) => (m.supportedGenerationMethods || []).indexOf('generateContent') >= 0)
+          .map((m) => String(m.name || '').replace(/^models\//, ''))
+          .filter((n) => n && n.indexOf('embedding') < 0 && n.indexOf('aqa') < 0);
+        return preferFlash(names);
+      }
+      const bases = {
+        groq: 'https://api.groq.com/openai/v1',
+        openai: 'https://api.openai.com/v1',
+        openrouter: 'https://openrouter.ai/api/v1'
+      };
+      const base = bases[provider];
+      if (!base) return [];
+      const r = await fetch(base + '/models', {
+        headers: { Authorization: 'Bearer ' + key }, signal
+      });
+      if (!r.ok) return [];
+      const d = await r.json().catch(() => null);
+      const names = ((d && d.data) || []).map((m) => m.id).filter(Boolean)
+        .filter((n) => !/whisper|guard|tts|embed|moderation|image|audio/i.test(n));
+      return preferFlash(names);
+    } catch (e) {
+      return [];
+    }
+  }
+
   async function directCall(msg) {
     const cfg = SS.getAI();
     const provider = cfg.provider || 'pollinations';
     const key = String(cfg.key || '').trim();
-    const model = String(cfg.model || '').trim();
+    const configured = String(cfg.model || '').trim();
     const langName = { en: 'English', hi: 'Hindi', kn: 'Kannada' }[LANG] || 'English';
     const system = AI_SYSTEM + ' Reply in ' + langName + '.';
 
@@ -290,63 +338,88 @@
 
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 25000);
-    const bad = (status, detail) => ({ error: provider + ' returned HTTP ' + status + (detail ? ' - ' + detail : '') });
+    const describe = (status, detail) =>
+      provider + ' returned HTTP ' + status + (detail ? ' - ' + detail : '');
+
     try {
       if (provider === 'pollinations') {
         const url = 'https://text.pollinations.ai/' +
-          encodeURIComponent(system + '\n\n' + msg) + '?model=' + encodeURIComponent(model || 'openai');
+          encodeURIComponent(system + '\n\n' + msg) + '?model=' + encodeURIComponent(configured || 'openai');
         const r = await fetch(url, { signal: ctrl.signal });
-        if (!r.ok) return bad(r.status);
+        if (!r.ok) return { error: describe(r.status) };
         const t = await r.text();
         return t ? { reply: t.trim() } : { error: 'pollinations returned an empty reply.' };
       }
 
-      if (provider === 'gemini') {
-        const url = 'https://generativelanguage.googleapis.com/v1beta/models/' +
-          (model || 'gemini-1.5-flash') + ':generateContent?key=' + encodeURIComponent(key);
-        const r = await fetch(url, {
+      // Build the candidate list: what the user chose, then what the provider
+      // actually serves right now, then a small safety net.
+      const SAFETY = {
+        gemini: ['gemini-3.8-flash', 'gemini-2.5-flash'],
+        groq: ['openai/gpt-oss-20b', 'openai/gpt-oss-120b'],
+        openai: ['gpt-4o-mini'],
+        openrouter: ['meta-llama/llama-3.1-8b-instruct:free']
+      };
+      const discovered = await discoverModels(provider, key, ctrl.signal);
+      let models = (configured ? [configured] : []).concat(discovered, SAFETY[provider] || []);
+      models = models.filter((m, i) => m && models.indexOf(m) === i);
+
+      let last = null;
+      for (const m of models) {
+        if (provider === 'gemini') {
+          const url = 'https://generativelanguage.googleapis.com/v1beta/models/' +
+            m + ':generateContent?key=' + encodeURIComponent(key);
+          const r = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              systemInstruction: { parts: [{ text: system }] },
+              contents: [{ role: 'user', parts: [{ text: msg }] }]
+            }),
+            signal: ctrl.signal
+          });
+          const d = await r.json().catch(() => null);
+          if (r.ok) {
+            const c = d && d.candidates && d.candidates[0] && d.candidates[0].content;
+            const t = c && c.parts && c.parts[0] && c.parts[0].text;
+            if (t) return { reply: String(t).trim(), model: m };
+            last = { error: 'Gemini (' + m + ') returned no text.' };
+            continue;
+          }
+          last = { error: describe(r.status, d && d.error && d.error.message) };
+          if (r.status === 404 || r.status === 400) continue;   // model gone - try the next
+          return last;
+        }
+
+        const bases = {
+          groq: 'https://api.groq.com/openai/v1',
+          openai: 'https://api.openai.com/v1',
+          openrouter: 'https://openrouter.ai/api/v1'
+        };
+        const base = bases[provider];
+        if (!base) return { error: 'Unknown provider: ' + provider };
+        const r = await fetch(base + '/chat/completions', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key },
           body: JSON.stringify({
-            systemInstruction: { parts: [{ text: system }] },
-            contents: [{ role: 'user', parts: [{ text: msg }] }]
+            model: m,
+            messages: [{ role: 'system', content: system }, { role: 'user', content: msg }],
+            temperature: 0.3,
+            max_tokens: 400
           }),
           signal: ctrl.signal
         });
         const d = await r.json().catch(() => null);
-        if (!r.ok) return bad(r.status, d && d.error && d.error.message);
-        const c = d && d.candidates && d.candidates[0] && d.candidates[0].content;
-        const t = c && c.parts && c.parts[0] && c.parts[0].text;
-        return t ? { reply: String(t).trim() } : { error: 'Gemini returned no text.' };
+        if (r.ok) {
+          const t = d && d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content;
+          if (t) return { reply: String(t).trim(), model: m };
+          last = { error: provider + ' (' + m + ') returned no text.' };
+          continue;
+        }
+        last = { error: describe(r.status, d && d.error && d.error.message) };
+        if (r.status === 404) continue;   // model retired - try the next
+        return last;
       }
-
-      const urls = {
-        groq: 'https://api.groq.com/openai/v1/chat/completions',
-        openai: 'https://api.openai.com/v1/chat/completions',
-        openrouter: 'https://openrouter.ai/api/v1/chat/completions'
-      };
-      const defaults = {
-        groq: 'llama-3.1-8b-instant',
-        openai: 'gpt-4o-mini',
-        openrouter: 'meta-llama/llama-3.1-8b-instruct:free'
-      };
-      const url = urls[provider];
-      if (!url) return { error: 'Unknown provider: ' + provider };
-      const r = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key },
-        body: JSON.stringify({
-          model: model || defaults[provider],
-          messages: [{ role: 'system', content: system }, { role: 'user', content: msg }],
-          temperature: 0.3,
-          max_tokens: 400
-        }),
-        signal: ctrl.signal
-      });
-      const d = await r.json().catch(() => null);
-      if (!r.ok) return bad(r.status, d && d.error && d.error.message);
-      const t = d && d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content;
-      return t ? { reply: String(t).trim() } : { error: provider + ' returned no text.' };
+      return last || { error: provider + ' had no usable model. Set one in the Model field.' };
     } catch (e) {
       return { error: (e && e.name === 'AbortError') ? 'Timed out after 25s.' : 'Network error: ' + (e && e.message) };
     } finally {

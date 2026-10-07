@@ -74,7 +74,7 @@ const PROVIDERS = {
   },
 
   openai: {
-    model: () => MODEL || 'gpt-4o-mini',
+    models: () => (MODEL ? [MODEL] : ['gpt-4o-mini']),
     request: (model, system, user) => ({
       url: 'https://api.openai.com/v1/chat/completions',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + KEY },
@@ -89,7 +89,7 @@ const PROVIDERS = {
   },
 
   groq: {
-    model: () => MODEL || 'llama-3.1-8b-instant',
+    models: () => (MODEL ? [MODEL] : ['openai/gpt-oss-20b', 'openai/gpt-oss-120b']),
     request: (model, system, user) => ({
       url: 'https://api.groq.com/openai/v1/chat/completions',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + KEY },
@@ -104,7 +104,7 @@ const PROVIDERS = {
   },
 
   openrouter: {
-    model: () => MODEL || 'meta-llama/llama-3.1-8b-instruct:free',
+    models: () => (MODEL ? [MODEL] : ['meta-llama/llama-3.1-8b-instruct:free']),
     request: (model, system, user) => ({
       url: 'https://openrouter.ai/api/v1/chat/completions',
       headers: {
@@ -124,7 +124,7 @@ const PROVIDERS = {
   },
 
   anthropic: {
-    model: () => MODEL || 'claude-3-5-haiku-latest',
+    models: () => (MODEL ? [MODEL] : ['claude-3-5-haiku-latest']),
     request: (model, system, user) => ({
       url: 'https://api.anthropic.com/v1/messages',
       headers: {
@@ -138,7 +138,7 @@ const PROVIDERS = {
   },
 
   gemini: {
-    model: () => MODEL || 'gemini-1.5-flash',
+    models: () => (MODEL ? [MODEL] : ['gemini-3.8-flash', 'gemini-2.5-flash']),
     request: (model, system, user) => ({
       url: 'https://generativelanguage.googleapis.com/v1beta/models/' + model +
            ':generateContent?key=' + encodeURIComponent(KEY),
@@ -180,20 +180,29 @@ async function askAI(message, lang) {
     if (typeof p.call === 'function') {
       return await p.call(system, message, controller.signal);
     }
-    const req = p.request(p.model(), system, message);
-    const res = await fetch(req.url, {
-      method: 'POST',
-      headers: req.headers,
-      body: JSON.stringify(req.body),
-      signal: controller.signal
-    });
-    if (!res.ok) {
-      console.error('[chat] ' + PROVIDER + ' HTTP ' + res.status);
-      return null;
+    // Providers retire model ids on a schedule, so try each in turn and only
+    // give up when they all fail.
+    let lastStatus = null;
+    for (const model of p.models()) {
+      const req = p.request(model, system, message);
+      const res = await fetch(req.url, {
+        method: 'POST',
+        headers: req.headers,
+        body: JSON.stringify(req.body),
+        signal: controller.signal
+      });
+      if (!res.ok) {
+        lastStatus = res.status;
+        console.error('[chat] ' + PROVIDER + ' ' + model + ' HTTP ' + res.status);
+        if (res.status === 404) continue;   // model retired - try the next one
+        return null;
+      }
+      const data = await res.json();
+      const text = p.parse(data);
+      if (text) return String(text).trim();
     }
-    const data = await res.json();
-    const text = p.parse(data);
-    return text ? String(text).trim() : null;
+    if (lastStatus) console.error('[chat] ' + PROVIDER + ' exhausted its model list');
+    return null;
   } catch (e) {
     console.error('[chat] ' + PROVIDER + ' failed: ' + e.message);
     return null;

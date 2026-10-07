@@ -191,12 +191,13 @@
   });
 
   /* ---------- AI assistant settings (browser mode) ---------- */
-  const aiProvider = $('#aiProvider'), aiKey = $('#aiKey');
+  const aiProvider = $('#aiProvider'), aiKey = $('#aiKey'), aiModel = $('#aiModel');
 
   function paintAI() {
     const cfg = SS.getAI();
     if (aiProvider) aiProvider.value = cfg.provider || 'pollinations';
     if (aiKey) aiKey.value = cfg.key || '';
+    if (aiModel) aiModel.value = cfg.model || '';
     const hint = $('#aiHint');
     if (!hint) return;
     const p = cfg.provider || 'pollinations';
@@ -225,7 +226,7 @@
         SS.toast('Detected a ' + guess + ' key - provider set to ' + guess, 'ok');
       }
     }
-    SS.setAI({ provider, key, model: '' });
+    SS.setAI({ provider, key, model: aiModel ? aiModel.value.trim() : '' });
     paintAI();
     SS.toast('AI settings saved on this device', 'ok');
   });
