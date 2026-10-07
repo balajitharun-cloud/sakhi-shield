@@ -1,105 +1,215 @@
 /* ============================================================
-   Sakhi Shield - Form SS-1 police complaint sheet (complaint.html)
-   A formal, numbered complaint form that generates a written
-   complaint addressed to the Station House Officer.
+   Sakhi Shield - F.I.R. builder (complaint.html)
+
+   Fills an A4 F.I.R.-format sheet live from the form, produces a
+   plain-text copy, and exports the sheet as a standalone A4 HTML
+   file or via the browser's print / Save-as-PDF.
    ============================================================ */
 (function () {
   'use strict';
-  const SS = window.SS, $ = SS.$;
-  const genBtn = $('#reportGenBtn');
-  if (!genBtn) return;
+  const SS = window.SS, $ = SS.$, el = SS.el;
+  const sheet = $('#a4sheet');
+  if (!sheet) return;
 
-  const v = (id) => { const n = $(id); return n ? String(n.value).trim() : ''; };
-  const orDash = (s) => s || '____________________';
+  /* ---------- fields -> sheet spans ---------- */
+  const MAP = [
+    ['#cName2', '#fName'], ['#cFather', '#fFather'], ['#cAge', '#fAge'],
+    ['#cSex', '#fSex'], ['#cOccupation', '#fOccupation'], ['#cAddr', '#fAddr'],
+    ['#cPhone2', '#fPhone'], ['#cDistrict', '#fDistrict'], ['#cStation', '#fStation'],
+    ['#sheetRef', '#fRef'], ['#cWhen', '#fWhen'], ['#cPlace', '#fPlace'],
+    ['#cDistance', '#fDistance'], ['#cOffence', '#fOffence'], ['#cAct', '#fAct'],
+    ['#cDelay', '#fDelay'], ['#cPrev', '#fPrev'], ['#cPeople', '#fPeople'],
+    ['#cAccusedAddr', '#fAccusedAddr'], ['#cWitness', '#fWitness'],
+    ['#cProperty', '#fProperty'], ['#cInjury', '#fInjury'],
+    ['#cDesc', '#fDesc'], ['#cAction', '#fAction']
+  ];
 
-  function complaintRef() {
-    const ymd = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-    return 'SS1/' + ymd + '/' + Math.floor(Math.random() * 9000 + 1000);
+  function v(sel) { const n = $(sel); return n ? String(n.value).trim() : ''; }
+
+  function fmtWhen(raw) {
+    if (!raw) return '';
+    const d = new Date(raw);
+    if (isNaN(d.getTime())) return raw;
+    return d.toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
   }
 
-  function build() {
-    const ref = ($('#sheetRef').textContent || '').replace(/^REF:\s*/, '');
-    const when = v('#cWhen') ? new Date(v('#cWhen')).toLocaleString('en-IN') : '____________________';
+  function ref() {
+    const d = new Date();
+    const ymd = d.toISOString().slice(0, 10).replace(/-/g, '');
+    return 'SS-' + ymd + '-' + Math.floor(Math.random() * 9000 + 1000);
+  }
+
+  function put(sel, text, fallback) {
+    const n = $(sel);
+    if (!n) return;
+    const val = text || '';
+    n.textContent = val || fallback || '\u2014';
+    n.classList.toggle('empty', !val && Boolean(fallback));
+  }
+
+  function sync() {
+    MAP.forEach(([from, to]) => {
+      let val = v(from);
+      if (from === '#cWhen') val = fmtWhen(val);
+      const fallbacks = {
+        '#fPeople': 'Not known', '#fAccusedAddr': 'Not known', '#fWitness': 'None',
+        '#fProperty': 'None', '#fInjury': 'None reported', '#fDelay': 'None',
+        '#fPrev': 'No', '#fAction': 'Register an FIR', '#fDesc': 'To be written by the complainant.'
+      };
+      put(to, val, fallbacks[to]);
+    });
+    // hide the distance parenthesis when there is no distance
+    const wrap = $('#fDistanceWrap');
+    if (wrap) wrap.style.display = v('#cDistance') ? '' : 'none';
+
+    const out = $('#reportOut');
+    if (out) out.textContent = plainText();
+    const hint = $('#complaintHint');
+    if (hint) {
+      hint.textContent = $('#cDeclare') && $('#cDeclare').checked
+        ? 'Declaration signed. Print or save this and carry it to the police station.'
+        : 'Tip: tick the declaration and sign the printed sheet before submitting it.';
+    }
+  }
+
+  /* ---------- plain-text version ---------- */
+  function plainText() {
+    const g = (sel, fb) => v(sel) || fb || '____________________';
+    const when = fmtWhen(v('#cWhen')) || '____________________';
     return [
-      'FORM SS-1  -  COMPLAINT OF OFFENCE',
-      'Reference No.: ' + ref,
-      'To,',
-      '  The Station House Officer,',
-      '  ' + orDash(v('#cStation')) + ' Police Station',
+      'FIRST INFORMATION REPORT (written complaint)',
+      '(Under Section 173 BNSS, 2023 - formerly Section 154 Cr.P.C.)',
+      '------------------------------------------------------------',
+      'Complainant\'s reference : ' + g('#sheetRef', '\u2014'),
+      'Date & time of report   : ' + (($('#fReported') || {}).textContent || ''),
+      'District                : ' + g('#cDistrict'),
+      'Police station          : ' + g('#cStation'),
       '',
-      'SUBJECT: Complaint regarding ' + orDash(v('#cOffence')),
+      'A. PARTICULARS OF THE OCCURRENCE',
+      '1. Act and sections      : ' + g('#cAct'),
+      '2. Nature of offence     : ' + g('#cOffence'),
+      '3. Date & time           : ' + when,
+      '4. Place of occurrence   : ' + g('#cPlace') +
+        (v('#cDistance') ? '  (approx. ' + v('#cDistance') + ' from the police station)' : ''),
+      '5. Delay in reporting    : ' + g('#cDelay', 'None'),
+      '6. Complaint made earlier: ' + g('#cPrev', 'No'),
       '',
-      'Respected Sir / Madam,',
+      'B. COMPLAINANT',
+      'Name                     : ' + g('#cName2'),
+      'Father / husband         : ' + g('#cFather'),
+      'Age / sex                : ' + g('#cAge', '\u2014') + ' / ' + g('#cSex', '\u2014'),
+      'Occupation               : ' + g('#cOccupation'),
+      'Address                  : ' + g('#cAddr'),
+      'Contact number           : ' + g('#cPhone2'),
       '',
-      '1.  I, ' + orDash(v('#cName2')) + ', residing at ' + orDash(v('#cAddr')) +
-        ', contact ' + orDash(v('#cPhone2')) + ', wish to lodge the following complaint.',
-      '2.  Date and time of the incident: ' + when,
-      '3.  Place of the incident: ' + orDash(v('#cPlace')),
-      '4.  Nature of the offence: ' + orDash(v('#cOffence')),
-      '5.  Person(s) involved: ' + (v('#cPeople') || 'Not known'),
-      '6.  Witnesses, if any: ' + (v('#cWitness') || 'None'),
-      '7.  Injury or property damage: ' + (v('#cInjury') || 'None reported'),
-      '8.  Complaint made earlier: ' + (v('#cPrev') || 'No'),
+      'C. ACCUSED / SUSPECTS',
+      'Name or description      : ' + g('#cPeople', 'Not known'),
+      'Address, if known        : ' + g('#cAccusedAddr', 'Not known'),
       '',
-      '9.  Brief facts of the incident:',
-      '    ' + (v('#cDesc') || '(not described)'),
+      'D. WITNESSES, PROPERTY AND INJURY',
+      'Witnesses                : ' + g('#cWitness', 'None'),
+      'Property involved / lost : ' + g('#cProperty', 'None'),
+      'Injury or damage         : ' + g('#cInjury', 'None reported'),
       '',
-      '10. Action requested: ' + (v('#cAction') || 'Register an FIR'),
+      'E. BRIEF FACTS OF THE CASE',
+      g('#cDesc', '(not described)'),
       '',
-      '11. I request you to register my complaint and take appropriate action as per law.',
+      'F. ACTION REQUESTED',
+      g('#cAction', 'Register an FIR'),
       '',
-      'GPS coordinates at the time of filing: ' + (SS.getFix() ? SS.fmtFix(SS.getFix()) : 'Not captured'),
-      'Filed on: ' + new Date().toLocaleString('en-IN'),
+      '------------------------------------------------------------',
+      'I declare that the information given above is true to the best of my',
+      'knowledge and belief.',
       '',
-      'Thanking you,',
-      'Yours faithfully,',
-      '',
-      'Signature: ____________________',
-      'Name: ' + orDash(v('#cName2')),
-      'Date: ____________________'
+      'Signature of complainant : ____________________',
+      'Date                     : ____________________'
     ].join('\n');
   }
 
-  function hasGenerated() {
-    const out = $('#reportOut');
-    return out && out.textContent.indexOf('FORM SS-1') !== -1;
+  /* ---------- standalone A4 export ---------- */
+  const A4_CSS = [
+    '@page{size:A4;margin:0}',
+    'html,body{margin:0;padding:0;background:#e9e9e9}',
+    'body{font-family:"Times New Roman",Georgia,serif;color:#111;font-size:10.5pt;line-height:1.45}',
+    '.a4{width:210mm;min-height:297mm;background:#fff;margin:0 auto;padding:14mm 13mm;box-sizing:border-box}',
+    '.a4 *{box-sizing:border-box}',
+    '.a4__frame{border:2px solid #111;padding:8mm 7mm;min-height:267mm}',
+    '.a4__head{text-align:center;border-bottom:2px solid #111;padding-bottom:6px;margin-bottom:9px}',
+    '.a4__crest{font-size:7.5pt;letter-spacing:.24em;color:#555}',
+    '.a4__title{font-size:14.5pt;font-weight:700;letter-spacing:.07em;margin:5px 0 2px}',
+    '.a4__sub{font-size:8.5pt;color:#333}',
+    '.a4__sub2{font-size:8.5pt;font-style:italic;color:#555;margin-top:3px}',
+    '.a4 table{width:100%;border-collapse:collapse;margin-bottom:6px}',
+    '.a4 td,.a4 th{border:1px solid #111;padding:4px 6px;vertical-align:top;font-size:10pt}',
+    '.a4 .lbl{width:34%;font-weight:700;background:#f6f6f6}',
+    '.a4 .sec{background:#111;color:#fff;font-weight:700;letter-spacing:.09em;text-transform:uppercase;font-size:8.5pt;padding:4px 6px}',
+    '.a4 .num{width:24px;text-align:center;font-weight:700;background:#f6f6f6}',
+    '.a4 .val{white-space:pre-wrap;word-break:break-word}',
+    '.a4 .box{min-height:56mm}',
+    '.a4 .half{width:50%}',
+    '.a4 .sig{display:flex;justify-content:space-between;gap:24px;margin-top:11mm}',
+    '.a4 .sig div{flex:1;border-top:1px solid #111;padding-top:3px;font-size:9pt;text-align:center}',
+    '.a4__office{border:1px dashed #666;padding:6px 8px;margin-top:5mm;font-size:8.5pt;color:#444}',
+    '.a4__office .o{min-height:14mm}',
+    '.a4__foot{margin-top:5mm;border-top:1px solid #111;padding-top:4px;font-size:7.5pt;color:#666}',
+    '.a4 .empty{color:#999}',
+    '@media print{body{background:#fff}.a4{margin:0}}'
+  ].join('\n');
+
+  function download(name, text, mime) {
+    const blob = new Blob([text], { type: mime || 'text/plain;charset=utf-8' });
+    const a = el('a', { href: URL.createObjectURL(blob), download: name });
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   }
 
-  genBtn.addEventListener('click', () => {
-    if (!$('#sheetRef').textContent.includes('SS1/')) $('#sheetRef').textContent = 'REF: ' + complaintRef();
-    if (!v('#cName2') || !v('#cDesc')) { SS.toast('Add your name and a description first', 'err'); return; }
-    $('#reportOut').textContent = build();
-    const hint = $('#complaintHint');
-    if (hint) hint.textContent = $('#cDeclare').checked
-      ? 'Declaration signed. This complaint is ready to submit.'
-      : 'Tip: tick the declaration box before submitting this to a police station.';
-    SS.toast('Complaint generated', 'ok');
+  /* ---------- wiring ---------- */
+  $('#sheetRef').value = ref();
+  const reported = $('#fReported');
+  if (reported) reported.textContent = new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
+  if ($('#cWhen')) $('#cWhen').value = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+
+  // live fill
+  MAP.forEach(([from]) => {
+    const n = $(from);
+    if (!n) return;
+    n.addEventListener('input', sync);
+    n.addEventListener('change', sync);
+  });
+  const decl = $('#cDeclare');
+  if (decl) decl.addEventListener('change', sync);
+
+  const printBtn = $('#reportPrintBtn');
+  if (printBtn) printBtn.addEventListener('click', () => {
+    sync();
+    SS.toast('Choose "Save as PDF" in the print dialog', 'ok');
+    setTimeout(() => window.print(), 120);
+  });
+
+  const htmlBtn = $('#reportHtmlBtn');
+  if (htmlBtn) htmlBtn.addEventListener('click', () => {
+    sync();
+    const title = 'FIR - ' + (v('#cName2') || 'complaint');
+    const doc = '<!DOCTYPE html>\n<html lang="' + SS.getLang() + '">\n<head>\n<meta charset="utf-8">\n' +
+      '<meta name="viewport" content="width=device-width,initial-scale=1">\n' +
+      '<title>' + SS.esc(title) + '</title>\n<style>\n' + A4_CSS + '\n</style>\n</head>\n<body>\n' +
+      sheet.outerHTML + '\n</body>\n</html>\n';
+    download('fir-complaint.html', doc, 'text/html;charset=utf-8');
+    SS.toast('A4 sheet downloaded - open it and print to PDF', 'ok');
   });
 
   const copyBtn = $('#reportCopyBtn');
-  if (copyBtn) copyBtn.addEventListener('click', () => {
-    if (!hasGenerated()) { SS.toast('Generate the complaint first', 'err'); return; }
-    SS.copyText($('#reportOut').textContent, 'Complaint copied');
-  });
-
-  const dlBtn = $('#reportDownloadBtn');
-  if (dlBtn) dlBtn.addEventListener('click', () => {
-    if (!hasGenerated()) { SS.toast('Generate the complaint first', 'err'); return; }
-    const blob = new Blob([$('#reportOut').textContent], { type: 'text/plain' });
-    const a = SS.el('a', { href: URL.createObjectURL(blob), download: 'police-complaint.txt' });
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-    SS.toast('Complaint downloaded', 'ok');
-  });
+  if (copyBtn) copyBtn.addEventListener('click', () => SS.copyText(plainText(), 'Report copied as text'));
 
   const clearBtn = $('#reportClearBtn');
   if (clearBtn) clearBtn.addEventListener('click', () => {
-    ['#cName2', '#cPhone2', '#cAddr', '#cWhen', '#cPlace', '#cStation', '#cPeople', '#cWitness', '#cDesc', '#cInjury']
+    ['#cName2', '#cFather', '#cAge', '#cOccupation', '#cAddr', '#cPhone2', '#cDistrict',
+     '#cStation', '#cWhen', '#cPlace', '#cDistance', '#cAct', '#cDelay', '#cPeople',
+     '#cAccusedAddr', '#cWitness', '#cProperty', '#cInjury', '#cDesc']
       .forEach((s) => { const n = $(s); if (n) n.value = ''; });
-    if ($('#cDeclare')) $('#cDeclare').checked = false;
-    $('#sheetRef').textContent = 'REF: ' + complaintRef();
-    $('#reportOut').textContent = 'Your complaint text will appear here.';
-    if ($('#complaintHint')) $('#complaintHint').textContent = '';
+    if (decl) decl.checked = false;
+    $('#sheetRef').value = ref();
+    sync();
     SS.toast('Cleared');
   });
 
@@ -109,19 +219,15 @@
     const fix = SS.getFix();
     try {
       await SS.api('/api/complaints', { method: 'POST', body: {
-        ref: ($('#sheetRef').textContent || '').replace(/^REF:\s*/, ''),
-        offence: v('#cOffence'), station: v('#cStation'), place: v('#cPlace'),
+        ref: v('#sheetRef'), offence: v('#cOffence'), station: v('#cStation'), place: v('#cPlace'),
         happenedAt: v('#cWhen'), people: v('#cPeople'), witnesses: v('#cWitness'),
         injury: v('#cInjury'), action: v('#cAction'), earlier: v('#cPrev'),
-        description: v('#cDesc'), text: $('#reportOut').textContent,
-        declared: $('#cDeclare').checked,
+        description: v('#cDesc'), text: plainText(), declared: Boolean(decl && decl.checked),
         lat: fix ? fix.lat : null, lng: fix ? fix.lng : null
       } });
-      SS.toast('Complaint saved to cloud', 'ok');
+      SS.toast('Saved to the cloud', 'ok');
     } catch (e) { SS.toast(e.message, 'err'); }
   });
 
-  // default the date field to now and stamp a reference number
-  if ($('#cWhen')) $('#cWhen').value = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16);
-  if ($('#sheetRef')) $('#sheetRef').textContent = 'REF: ' + complaintRef();
+  sync();
 })();

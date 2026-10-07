@@ -557,3 +557,44 @@ html { scroll-padding-top: 84px; }
 .ev-item__acts{ display:flex; gap:6px; margin-top:9px; flex-wrap:wrap; }
 .ev-note{ background:var(--warn-dim); border:1px solid var(--border); border-radius:var(--radius-sm);
   padding:11px 13px; font-size:.8rem; color:var(--text); }
+
+/* ---------- 12. A4 FIR sheet ---------- */
+.a4-wrap{ background:var(--surface-3); border-radius:var(--radius-sm); padding:14px; overflow-x:auto; }
+.a4{ width:210mm; min-height:297mm; background:#fff; color:#111; margin:0 auto;
+  padding:14mm 13mm; box-sizing:border-box; border:1px solid #999;
+  font-family:"Times New Roman", Georgia, serif; font-size:10.5pt; line-height:1.45;
+  box-shadow:0 12px 34px rgba(0,0,0,.28); }
+.a4 *{ box-sizing:border-box; }
+.a4__frame{ border:2px solid #111; padding:8mm 7mm; min-height:267mm; }
+.a4__head{ text-align:center; border-bottom:2px solid #111; padding-bottom:6px; margin-bottom:9px; }
+.a4__crest{ font-family:var(--font-mono); font-size:7.5pt; letter-spacing:.24em; color:#555; }
+.a4__title{ font-size:14.5pt; font-weight:700; letter-spacing:.07em; margin:5px 0 2px; }
+.a4__sub{ font-size:8.5pt; color:#333; }
+.a4__sub2{ font-size:8.5pt; font-style:italic; color:#555; margin-top:3px; }
+.a4 table{ width:100%; border-collapse:collapse; margin-bottom:6px; }
+.a4 td, .a4 th{ border:1px solid #111; padding:4px 6px; vertical-align:top; font-size:10pt; }
+.a4 .lbl{ width:34%; font-weight:700; background:#f6f6f6; }
+.a4 .sec{ background:#111; color:#fff; font-weight:700; letter-spacing:.09em;
+  text-transform:uppercase; font-size:8.5pt; padding:4px 6px; }
+.a4 .num{ width:24px; text-align:center; font-weight:700; background:#f6f6f6; }
+.a4 .val{ white-space:pre-wrap; word-break:break-word; }
+.a4 .box{ min-height:56mm; }
+.a4 .half{ width:50%; }
+.a4 .sig{ display:flex; justify-content:space-between; gap:24px; margin-top:11mm; }
+.a4 .sig div{ flex:1; border-top:1px solid #111; padding-top:3px; font-size:9pt; text-align:center; }
+.a4__office{ border:1px dashed #666; padding:6px 8px; margin-top:5mm; font-size:8.5pt; color:#444; }
+.a4__office .o{ min-height:14mm; }
+.a4__foot{ margin-top:5mm; border-top:1px solid #111; padding-top:4px; font-size:7.5pt; color:#666; }
+.a4 .empty{ color:#999; }
+@media (max-width: 900px){ .a4{ font-size:10pt; padding:10mm 8mm; } .a4__title{ font-size:12pt; } }
+
+@media print{
+  @page{ size:A4; margin:0; }
+  body{ background:#fff !important; }
+  body *{ visibility:hidden; }
+  #a4sheet, #a4sheet *{ visibility:visible; }
+  #a4sheet{ position:absolute; left:0; top:0; margin:0; box-shadow:none; border:none;
+    width:210mm; min-height:297mm; }
+  .a4-wrap{ background:#fff; padding:0; overflow:visible; }
+  .no-print{ display:none !important; }
+}

@@ -213,7 +213,11 @@ async function main() {
     check(allPages, 'all 10 feature pages are served as separate pages');
 
     const comp = await raw('GET', base + '/complaint.html');
-    check(comp.text.includes('Form SS-1'), 'complaint page has the police complaint sheet');
+    check(comp.text.includes('FIRST INFORMATION REPORT'), 'complaint page has the FIR sheet');
+    check(comp.text.includes('id="a4sheet"'), 'complaint page renders an A4 sheet');
+    check(comp.text.includes('id="reportPrintBtn"'), 'complaint page can print / save as PDF');
+    check(comp.text.includes('id="reportHtmlBtn"'), 'complaint page can export the A4 sheet');
+    check(comp.text.includes('Bharatiya Nagarik Suraksha Sanhita'), 'FIR sheet cites the correct statute');
     const acct = await raw('GET', base + '/account.html');
     check(acct.text.includes('id="serverUrl"'), 'account page has the backend URL field');
     check((acct.text.match(/id="apiHint"/g) || []).length === 1, 'account page has exactly one auth-status element (was duplicated)');

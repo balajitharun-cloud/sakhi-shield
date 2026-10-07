@@ -19,7 +19,7 @@ sakhi-shield/
 │   ├── evidence.html         camera, audio/video recording, evidence vault
 │   ├── safety.html           safety tips
 │   ├── rights.html           legal rights (India)
-│   ├── complaint.html        Form SS-1 police complaint sheet
+│   ├── complaint.html        A4 F.I.R. sheet builder
 │   ├── account.html          account + backend connection
 │   └── assets/
 │       ├── css/style.css     all styling, shared by every page
@@ -42,8 +42,8 @@ sakhi-shield/
 │   ├── chat.js           AI chat: 6 providers, no canned answers
 │   └── sharePage.js      the public live-location viewer page
 ├── test/
-│   ├── api.test.js       end-to-end API test (73 checks)
-│   └── i18n.test.js      front-end test across all 11 pages (66 checks)
+│   ├── api.test.js       end-to-end API test (77 checks)
+│   └── i18n.test.js      front-end test across all 11 pages (89 checks)
 ├── render.yaml           one-click Render blueprint
 └── .env.example          every config knob, documented
 ```
@@ -64,9 +64,7 @@ sakhi-shield/
 - Trusted contacts stored in localStorage
 - Fake call, check-in timer
 - Safety tips and legal rights (India)
-- **Form SS-1 police complaint sheet** - a formal, numbered complaint form in the
-  style of an official report sheet, which generates a written complaint you can
-  hand to the police, email, or save
+- **A4 F.I.R. builder** - a detailed F.I.R.-format sheet (Sections A-F: occurrence, complainant, accused, witnesses/property, facts, action, plus an office-use block). It fills in live as you type, prints or saves as an A4 PDF, and exports as a standalone A4 `.html` file.
 
 **Backend (what the server adds)**
 - Accounts with hashed passwords and JWT login

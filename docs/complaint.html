@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/css/style.css?v=6">
+<link rel="stylesheet" href="assets/css/style.css?v=7">
 </head>
 <body>
 
@@ -46,91 +46,178 @@
 </header>
 
 <main class="wrap">
-<section id="report">
-    <div class="section-head">
-      <span class="eyebrow">Police complaint sheet</span>
-      <h2>File a written complaint</h2>
-      <p class="dim">Fill this the way an official complaint sheet is written. It produces a formal complaint text you can hand in, email, or keep as a record.</p>
+  <div class="section-head no-print">
+    <span class="eyebrow">First Information Report</span>
+    <h2>Fill in the F.I.R.</h2>
+    <p class="dim">Complete the form on this page - the A4 sheet below fills in as you type. Print it or save it as a PDF and carry it to the police station.</p>
+  </div>
+
+  <div class="grid grid--2 no-print">
+    <div class="card">
+      <h3>Complainant</h3>
+      <div class="row">
+        <div class="field" style="flex:2 1 190px"><label for="cName2">Full name</label><input id="cName2" maxlength="80" autocomplete="name" placeholder="Full name"></div>
+        <div class="field" style="flex:1 1 80px"><label for="cAge">Age</label><input id="cAge" inputmode="numeric" maxlength="3" placeholder="27"></div>
+        <div class="field" style="flex:1 1 110px"><label for="cSex">Sex</label><select id="cSex"><option>Female</option><option>Male</option><option>Other</option></select></div>
+      </div>
+      <div class="row">
+        <div class="field" style="flex:2 1 190px"><label for="cFather">Father's / husband's name</label><input id="cFather" maxlength="80"></div>
+        <div class="field" style="flex:1 1 130px"><label for="cOccupation">Occupation</label><input id="cOccupation" maxlength="60"></div>
+      </div>
+      <div class="field"><label for="cAddr">Residential address</label><input id="cAddr" maxlength="180" placeholder="House, street, town, PIN"></div>
+      <div class="field"><label for="cPhone2">Contact number</label><input id="cPhone2" inputmode="tel" maxlength="20" autocomplete="tel"></div>
     </div>
-    <div class="grid grid--2">
-      <div class="sheet" id="complaintSheet">
-        <div class="sheet__band">
-          <b>Form SS-1 &middot; Complaint of offence</b>
-          <span id="sheetRef">REF: —</span>
-        </div>
-        <div class="sheet__note">To be submitted to the Station House Officer, concerned police station</div>
-        <div class="sheet__body">
-          <div class="sheet__row"><div class="sheet__num">01</div>
-            <label class="sheet__label" for="cName2">Complainant name</label>
-            <div class="sheet__field"><input id="cName2" placeholder="Full name" maxlength="80" autocomplete="name"></div></div>
-          <div class="sheet__row"><div class="sheet__num">02</div>
-            <label class="sheet__label" for="cPhone2">Contact number</label>
-            <div class="sheet__field"><input id="cPhone2" placeholder="+91 …" inputmode="tel" maxlength="20" autocomplete="tel"></div></div>
-          <div class="sheet__row"><div class="sheet__num">03</div>
-            <label class="sheet__label" for="cAddr">Address</label>
-            <div class="sheet__field"><input id="cAddr" placeholder="House, street, town" maxlength="160"></div></div>
-          <div class="sheet__row"><div class="sheet__num">04</div>
-            <label class="sheet__label" for="cWhen">Date &amp; time of incident</label>
-            <div class="sheet__field"><input id="cWhen" type="datetime-local"></div></div>
-          <div class="sheet__row"><div class="sheet__num">05</div>
-            <label class="sheet__label" for="cPlace">Place of incident</label>
-            <div class="sheet__field"><input id="cPlace" placeholder="Location / landmark" maxlength="160"></div></div>
-          <div class="sheet__row"><div class="sheet__num">06</div>
-            <label class="sheet__label" for="cStation">Police station / district</label>
-            <div class="sheet__field"><input id="cStation" placeholder="Nearest station" maxlength="120"></div></div>
-          <div class="sheet__row"><div class="sheet__num">07</div>
-            <label class="sheet__label" for="cOffence">Nature of offence</label>
-            <div class="sheet__field"><select id="cOffence">
-              <option>Stalking / following</option><option>Physical assault</option>
-              <option>Sexual harassment</option><option>Domestic violence</option>
-              <option>Cyber harassment / online abuse</option><option>Criminal intimidation / threats</option>
-              <option>Eve-teasing / obscene behaviour</option><option>Other</option></select></div></div>
-          <div class="sheet__row"><div class="sheet__num">08</div>
-            <label class="sheet__label" for="cPeople">Persons involved</label>
-            <div class="sheet__field"><input id="cPeople" placeholder="Names / descriptions" maxlength="240"></div></div>
-          <div class="sheet__row"><div class="sheet__num">09</div>
-            <label class="sheet__label" for="cWitness">Witnesses, if any</label>
-            <div class="sheet__field"><input id="cWitness" placeholder="Names / contact" maxlength="240"></div></div>
-          <div class="sheet__row"><div class="sheet__num">10</div>
-            <label class="sheet__label" for="cDesc">Description of incident</label>
-            <div class="sheet__field"><textarea id="cDesc" rows="4" placeholder="What happened, in your own words…" maxlength="3000"></textarea></div></div>
-          <div class="sheet__row"><div class="sheet__num">11</div>
-            <label class="sheet__label" for="cInjury">Injury or property damage</label>
-            <div class="sheet__field"><input id="cInjury" placeholder="None / describe" maxlength="200"></div></div>
-          <div class="sheet__row"><div class="sheet__num">12</div>
-            <label class="sheet__label" for="cAction">Action requested</label>
-            <div class="sheet__field"><select id="cAction">
-              <option>Register an FIR</option><option>Take legal action against the offender</option>
-              <option>Protection order</option><option>Mediation / counselling</option><option>Other</option></select></div></div>
-          <div class="sheet__row"><div class="sheet__num">13</div>
-            <label class="sheet__label" for="cPrev">Complaint made earlier</label>
-            <div class="sheet__field"><select id="cPrev"><option>No</option><option>Yes</option></select></div></div>
-        </div>
-        <div class="sheet__foot">
-          <label class="sheet__decl">
-            <input type="checkbox" id="cDeclare">
-            <span>I declare that the information given above is true to the best of my knowledge and belief.</span>
-          </label>
-          <div class="sheet__sign">
-            <div>Signature of complainant</div>
+
+    <div class="card">
+      <h3>Incident</h3>
+      <div class="field"><label for="sheetRef">Complainant's reference (auto)</label><input id="sheetRef" readonly></div>
+      <div class="row">
+        <div class="field" style="flex:1 1 160px"><label for="cWhen">Date &amp; time of occurrence</label><input id="cWhen" type="datetime-local"></div>
+        <div class="field" style="flex:1 1 150px"><label for="cDistrict">District</label><input id="cDistrict" maxlength="60"></div>
+      </div>
+      <div class="field"><label for="cPlace">Place of occurrence</label><input id="cPlace" maxlength="180" placeholder="Location / landmark"></div>
+      <div class="row">
+        <div class="field" style="flex:1 1 140px"><label for="cStation">Police station</label><input id="cStation" maxlength="80" placeholder="Nearest station"></div>
+        <div class="field" style="flex:1 1 130px"><label for="cDistance">Distance from P.S.</label><input id="cDistance" maxlength="60" placeholder="1.5 km"></div>
+      </div>
+      <div class="field"><label for="cOffence">Nature of offence</label><select id="cOffence">
+        <option>Stalking / following</option><option>Physical assault</option>
+        <option>Sexual harassment</option><option>Domestic violence</option>
+        <option>Cyber harassment / online abuse</option><option>Criminal intimidation / threats</option>
+        <option>Eve-teasing / obscene behaviour</option><option>Other</option></select></div>
+      <div class="field"><label for="cAct">Act &amp; sections (only if you know them)</label><input id="cAct" maxlength="140" placeholder="Leave blank if unsure"></div>
+      <div class="field"><label for="cDelay">Delay in reporting, if any</label><input id="cDelay" maxlength="120" placeholder="e.g. 2 days - I was unwell"></div>
+    </div>
+
+    <div class="card">
+      <h3>Accused, witnesses &amp; property</h3>
+      <div class="field"><label for="cPeople">Name / description of the accused</label><input id="cPeople" maxlength="240" placeholder="Names / descriptions"></div>
+      <div class="field"><label for="cAccusedAddr">Address of the accused, if known</label><input id="cAccusedAddr" maxlength="200"></div>
+      <div class="field"><label for="cWitness">Witnesses, if any</label><input id="cWitness" maxlength="240" placeholder="Names / contact"></div>
+      <div class="field"><label for="cProperty">Property involved / lost</label><input id="cProperty" maxlength="200" placeholder="None / describe"></div>
+      <div class="field"><label for="cInjury">Injury or damage</label><input id="cInjury" maxlength="200" placeholder="None / describe"></div>
+    </div>
+
+    <div class="card">
+      <h3>Facts &amp; action</h3>
+      <div class="field"><label for="cDesc">Brief facts of the case</label><textarea id="cDesc" rows="6" maxlength="4000" placeholder="What happened, in your own words. Include times, places and anything that was said."></textarea></div>
+      <div class="field"><label for="cAction">Action requested</label><select id="cAction">
+        <option>Register an FIR</option><option>Take legal action against the offender</option>
+        <option>Protection order</option><option>Mediation / counselling</option><option>Other</option></select></div>
+      <div class="field"><label for="cPrev">Complaint made earlier</label><select id="cPrev"><option>No</option><option>Yes</option></select></div>
+      <label class="sheet__decl"><input type="checkbox" id="cDeclare"><span>I declare that the information given above is true to the best of my knowledge and belief.</span></label>
+    </div>
+  </div>
+
+  <div class="row no-print" style="margin:18px 0 8px">
+    <button class="btn btn--solid" id="reportPrintBtn" type="button">Print / Save as PDF</button>
+    <button class="btn" id="reportHtmlBtn" type="button">Download A4 sheet (.html)</button>
+    <button class="btn" id="reportCopyBtn" type="button">Copy as text</button>
+    <button class="btn" id="reportCloudBtn" type="button">Save to cloud</button>
+    <button class="btn" id="reportClearBtn" type="button">Clear</button>
+  </div>
+  <p class="dim no-print" style="font-size:.78rem;margin:0 0 16px" id="complaintHint"></p>
+
+  <div id="printArea">
+    <div class="a4-wrap">
+      <div class="a4" id="a4sheet">
+        <div class="a4__frame">
+          <div class="a4__head">
+            <div class="a4__crest">GOVERNMENT OF INDIA &middot; POLICE DEPARTMENT</div>
+            <div class="a4__title">FIRST INFORMATION REPORT</div>
+            <div class="a4__sub">(Under Section 173 of the Bharatiya Nagarik Suraksha Sanhita, 2023 - formerly Section 154 Cr.P.C.)</div>
+            <div class="a4__sub2">Written complaint submitted by the complainant for registration at the police station</div>
+          </div>
+
+          <table>
+            <tr>
+              <td class="lbl">District</td><td class="val"><span id="fDistrict">&mdash;</span></td>
+              <td class="lbl">Police station</td><td class="val"><span id="fStation">&mdash;</span></td>
+            </tr>
+            <tr>
+              <td class="lbl">F.I.R. No.</td><td class="val"><i>To be assigned by the police station</i></td>
+              <td class="lbl">Complainant's reference</td><td class="val"><span id="fRef">&mdash;</span></td>
+            </tr>
+            <tr>
+              <td class="lbl">Date &amp; time of report</td><td class="val"><span id="fReported">&mdash;</span></td>
+              <td class="lbl">Pages</td><td class="val">1 of 1</td>
+            </tr>
+          </table>
+
+          <table>
+            <tr><td class="sec" colspan="2">A. Particulars of the occurrence</td></tr>
+            <tr><td class="num">1</td><td class="val"><b>Act and sections:</b> <span id="fAct">&mdash;</span></td></tr>
+            <tr><td class="num">2</td><td class="val"><b>Nature of offence:</b> <span id="fOffence">&mdash;</span></td></tr>
+            <tr><td class="num">3</td><td class="val"><b>Date and time of occurrence:</b> <span id="fWhen">&mdash;</span></td></tr>
+            <tr><td class="num">4</td><td class="val"><b>Place of occurrence:</b> <span id="fPlace">&mdash;</span><span id="fDistanceWrap"> (approx. <span id="fDistance">&mdash;</span> from the police station)</span></td></tr>
+            <tr><td class="num">5</td><td class="val"><b>Delay in reporting, if any, and its reason:</b> <span id="fDelay">None</span></td></tr>
+            <tr><td class="num">6</td><td class="val"><b>Complaint made earlier:</b> <span id="fPrev">No</span></td></tr>
+          </table>
+
+          <table>
+            <tr><td class="sec" colspan="2">B. Complainant</td></tr>
+            <tr><td class="lbl">Name</td><td class="val"><span id="fName">&mdash;</span></td></tr>
+            <tr><td class="lbl">Father's / husband's name</td><td class="val"><span id="fFather">&mdash;</span></td></tr>
+            <tr><td class="lbl">Age / sex</td><td class="val"><span id="fAge">&mdash;</span> / <span id="fSex">&mdash;</span></td></tr>
+            <tr><td class="lbl">Occupation</td><td class="val"><span id="fOccupation">&mdash;</span></td></tr>
+            <tr><td class="lbl">Address</td><td class="val"><span id="fAddr">&mdash;</span></td></tr>
+            <tr><td class="lbl">Contact number</td><td class="val"><span id="fPhone">&mdash;</span></td></tr>
+          </table>
+
+          <table>
+            <tr><td class="sec" colspan="2">C. Accused / suspects</td></tr>
+            <tr><td class="lbl">Name or description</td><td class="val"><span id="fPeople">Not known</span></td></tr>
+            <tr><td class="lbl">Address, if known</td><td class="val"><span id="fAccusedAddr">Not known</span></td></tr>
+          </table>
+
+          <table>
+            <tr><td class="sec" colspan="2">D. Witnesses, property and injury</td></tr>
+            <tr><td class="lbl">Witnesses</td><td class="val"><span id="fWitness">None</span></td></tr>
+            <tr><td class="lbl">Property involved / lost</td><td class="val"><span id="fProperty">None</span></td></tr>
+            <tr><td class="lbl">Injury or damage</td><td class="val"><span id="fInjury">None reported</span></td></tr>
+          </table>
+
+          <table>
+            <tr><td class="sec" colspan="2">E. Brief facts of the case</td></tr>
+            <tr><td colspan="2" class="val box"><span id="fDesc" class="empty">To be written by the complainant.</span></td></tr>
+          </table>
+
+          <table>
+            <tr><td class="sec" colspan="2">F. Action requested</td></tr>
+            <tr><td colspan="2" class="val"><span id="fAction">Register an FIR</span></td></tr>
+          </table>
+
+          <div class="sig">
+            <div>Signature / thumb impression of complainant</div>
             <div>Date</div>
+          </div>
+
+          <div class="a4__office">
+            <b>For office use only &mdash; action taken by the police station</b>
+            <div class="o"></div>
+            <table style="margin-top:4px">
+              <tr><td class="half">Registered as F.I.R. No.:</td><td class="half">Date of registration:</td></tr>
+              <tr><td class="half">Investigating officer:</td><td class="half">Signature &amp; seal:</td></tr>
+            </table>
+          </div>
+
+          <div class="a4__foot">
+            Prepared with Sakhi Shield. This is a written complaint drawn up in the standard F.I.R. format; it is not
+            itself a registered F.I.R. - the police station registers the F.I.R. on receipt. Please read it through and
+            sign it before submitting.
           </div>
         </div>
       </div>
-
-      <div class="card">
-        <div class="complaint-out" id="reportOut">Your complaint text will appear here.</div>
-        <div class="row" style="margin-top:12px">
-          <button class="btn btn--sm btn--solid" id="reportGenBtn">Generate complaint</button>
-          <button class="btn btn--sm" id="reportCopyBtn">Copy</button>
-          <button class="btn btn--sm" id="reportDownloadBtn">Download .txt</button>
-          <button class="btn btn--sm" id="reportCloudBtn">Save to cloud</button>
-          <button class="btn btn--sm" id="reportClearBtn">Clear</button>
-        </div>
-        <p class="dim" style="font-size:.76rem;margin:12px 0 0" id="complaintHint"></p>
-      </div>
     </div>
-  </section>
+  </div>
+
+  <details class="acc no-print" style="margin-top:16px">
+    <summary>Plain-text version</summary>
+    <div class="acc__body">
+      <div class="complaint-out" id="reportOut">Fill in the form and a plain-text copy appears here.</div>
+      <p class="dim" style="font-size:.76rem;margin:10px 0 0">Useful for pasting into an email or a police portal.</p>
+    </div>
+  </details>
 </main>
 
 <footer class="footer">
@@ -159,9 +246,9 @@
 
 <div class="toast-host" id="toastHost" aria-live="polite" aria-atomic="false"></div>
 
-<script src="assets/js/i18n.js?v=6"></script>
-<script src="assets/js/data.js?v=6"></script>
-<script src="assets/js/core.js?v=6"></script>
-<script src="assets/js/complaint.js?v=6"></script>
+<script src="assets/js/i18n.js?v=7"></script>
+<script src="assets/js/data.js?v=7"></script>
+<script src="assets/js/core.js?v=7"></script>
+<script src="assets/js/complaint.js?v=7"></script>
 </body>
 </html>

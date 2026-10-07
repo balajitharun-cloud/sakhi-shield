@@ -115,15 +115,28 @@ async function main() {
     check(!!doc.querySelector('.toggle[data-motion]'), 'tools page has the motion toggle');
   }
   {
-    const { doc } = await load('complaint.html');
-    check(doc.querySelector('#sheetRef').textContent.includes('SS1/'), 'complaint page stamps a reference number');
+    const { doc, win } = await load('complaint.html');
+    check(doc.querySelector('#sheetRef').value.startsWith('SS-'), 'stamps a complainant reference');
+    check(!!doc.querySelector('#a4sheet') && doc.querySelector('#a4sheet').className === 'a4', 'renders an A4-sized sheet');
+    check(!!doc.querySelector('#printArea'), 'has a print area');
+
+    const fire = (sel) => doc.querySelector(sel).dispatchEvent(new win.Event('input', { bubbles: true }));
     doc.querySelector('#cName2').value = 'Tharun';
     doc.querySelector('#cPlace').value = 'MG Road';
     doc.querySelector('#cDesc').value = 'Followed from the bus stop.';
-    doc.querySelector('#reportGenBtn').dispatchEvent(new (doc.defaultView.Event)('click', { bubbles: true }));
+    doc.querySelector('#cFather').value = 'Balaji';
+    doc.querySelector('#cAge').value = '27';
+    fire('#cName2'); fire('#cPlace'); fire('#cDesc'); fire('#cFather'); fire('#cAge');
+
+    check(doc.querySelector('#fName').textContent === 'Tharun', 'the A4 sheet fills in live from the form');
+    check(doc.querySelector('#fPlace').textContent === 'MG Road', 'the sheet shows the place of occurrence');
+    check(doc.querySelector('#fFather').textContent === 'Balaji', 'the sheet shows the father/husband name');
+    check(!doc.querySelector('#fDesc').classList.contains('empty'), 'a filled description clears the placeholder style');
+
     const out = doc.querySelector('#reportOut').textContent;
-    check(out.includes('FORM SS-1') && out.includes('Tharun') && out.includes('Station House Officer'),
-      'complaint page generates a formal complaint');
+    check(out.includes('FIRST INFORMATION REPORT') && out.includes('Tharun') && out.includes('MG Road'),
+      'a plain-text version is generated alongside the sheet');
+    check(out.includes('BRIEF FACTS OF THE CASE'), 'the plain-text version has the section headings');
   }
   {
     const { doc } = await load('account.html');
