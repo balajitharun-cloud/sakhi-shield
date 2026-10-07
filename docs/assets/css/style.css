@@ -608,3 +608,22 @@ html { scroll-padding-top: 84px; }
 .chat-setup[hidden] { display: none; }
 .chat-setup .field { margin-bottom: 8px; }
 .chat-setup label { font-size: .78rem; }
+
+/* nearby police & hospitals (location page) */
+.nearby-group + .nearby-group { margin-top: 20px; }
+.nearby-title {
+  margin: 0 0 10px; font-size: .82rem; letter-spacing: .04em;
+  text-transform: uppercase; color: var(--text-dim);
+}
+.nearby-list { display: grid; gap: 10px; }
+.nearby-item {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 12px 14px;
+}
+.nearby-item b { display: block; font-size: .95rem; }
+.nearby-meta {
+  font-size: .78rem; color: var(--text-dim); margin-top: 3px;
+  font-family: var(--font-mono);
+}
+.nearby-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.nearby-actions .btn { min-height: 34px; padding: 6px 12px; font-size: .8rem; }

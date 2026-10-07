@@ -59,6 +59,7 @@ sakhi-shield/
 - Panic siren generated with the Web Audio API
 - Emergency helplines (India): 112, 100, 101, 102, 181, 1091, NCW, 1098, Tele-MANAS 14416, 1930
 - Live location, journey tracking, map preview
+- **Nearby police & hospitals** - scans the area around your current position and lists the closest police stations and hospitals, nearest first, with a directions link for each and a tap-to-call button where OpenStreetMap knows the number. Uses OpenStreetMap's Nominatim search, which needs no API key; results are filtered to real `amenity=police` / `amenity=hospital` entries, de-duplicated, and cached for the position that produced them (Nominatim allows one request per second). Falls back to a Maps search link if the service is unreachable.
 - Trusted contacts stored in localStorage
 - Fake call, check-in timer
 - Safety tips and legal rights (India)

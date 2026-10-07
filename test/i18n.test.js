@@ -276,6 +276,75 @@ async function main() {
     check(!msgs().some((m) => m.includes('Thinking')), 'an error response still clears the bubble');
     check(msgs().some((m) => /bad gateway/.test(m)), 'reports the real server error');
   }
+  console.log('\nnearby police & hospitals (real OpenStreetMap data)');
+  {
+    const POLICE = [
+      {"name": "Central Police Station", "category": "amenity", "type": "police", "lat": "12.9601119", "lon": "77.5720676", "display_name": "Central Police Station, Aluri Venkata Rao Road, Chamarajapete, Chamarajpet, Bengaluru Central City Corporation, Bengaluru, Bangalore North, Bengaluru Urban, Karnataka, 560018, India", "extratags": {"designation": "Central Police Station", "phone": "080 2294 2559"}},
+      {"name": "Koramangala Police Station", "category": "amenity", "type": "police", "lat": "12.9411249", "lon": "77.6214094", "display_name": "Koramangala Police Station, 19th Main Road, Koramangala 5th Block, A Adugodi, Bengaluru South City Corporation, Bengaluru, Bangalore South, Bengaluru Urban, Karnataka, 560095, India", "extratags": null},
+      {"name": "Ashok Nagar Police Station", "category": "amenity", "type": "police", "lat": "12.9715906", "lon": "77.6101953", "display_name": "Ashok Nagar Police Station, Commissariat Road, Corporation Quarters, Ashok Nagar, Ashokanagar, Bengaluru Central City Corporation, Bengaluru, Bangalore North, Bengaluru Urban, Karnataka, 560025, India", "extratags": null},
+      {"name": "Banaswadi Police Station", "category": "amenity", "type": "police", "lat": "13.0196670", "lon": "77.6401530", "display_name": "Banaswadi Police Station, 3rd Cross Road, Kalyan Nagar, Kalyanagar, Bengaluru North City Corporation, Bengaluru, Bangalore North, Bengaluru Urban, Karnataka, 560043, India", "extratags": {"landuse": "commercial"}},
+      {"name": "Upparpet Traffic Police Station", "category": "amenity", "type": "police", "lat": "12.9745091", "lon": "77.5749573", "display_name": "Upparpet Traffic Police Station, Tank Bund Road, Gandhinagar, Nehru Nagar, Bengaluru Central City Corporation, Bengaluru, Bangalore North, Bengaluru Urban, Karnataka, 560009, India", "extratags": {"building": "yes"}},
+      {"name": "Bellandur Traffic Police Station", "category": "amenity", "type": "police", "lat": "12.9218104", "lon": "77.6615878", "display_name": "Bellandur Traffic Police Station, 1st Main Road, Iblur, Bengaluru South City Corporation, Bengaluru, Bangalore South, Bengaluru Urban, Karnataka, 560102, India", "extratags": {"building": "yes"}},
+      {"name": "Police Bazaar Road", "category": "highway", "type": "residential", "lat": "12.98", "lon": "77.60"},
+      {"name": "", "category": "amenity", "type": "police", "lat": "12.99", "lon": "77.61"},
+      {"name": "Central Police Station", "category": "amenity", "type": "police", "lat": "12.9601119", "lon": "77.5720676", "display_name": "Central Police Station, Aluri Venkata Rao Road, Chamarajapete, Chamarajpet, Bengaluru Central City Corporation, Bengaluru, Bangalore North, Bengaluru Urban, Karnataka, 560018, India", "extratags": {"designation": "Central Police Station"}}
+    ];
+    const HOSP = [
+      {"name": "Greenview Hospital", "category": "amenity", "type": "hospital", "lat": "12.9191928", "lon": "77.6381223", "display_name": "Greenview Hospital, 14th Main Road, MCHS Colony, Sector 5, Jakkasandra, Bengaluru South City Corporation, Bengaluru, Bangalore South, Bengaluru Urban, Karnataka, 560034, India", "extratags": {"healthcare": "hospital", "wheelchair": "yes"}},
+      {"name": "Hospital", "category": "amenity", "type": "hospital", "lat": "12.9914123", "lon": "77.6117329", "display_name": "Hospital, Saint John's Church Road, Bharathi Nagar, Bengaluru Central City Corporation, Bengaluru, Bangalore North, Bengaluru Urban, Karnataka, 560001, India", "extratags": {"phone": "+9193411 44150", "website": "https://www.mirlayeyecare.com/"}},
+      {"name": "Karanth Speciality Hospital", "category": "amenity", "type": "hospital", "lat": "12.9160081", "lon": "77.6193573", "display_name": "Karanth Speciality Hospital, Ragigudda-Silk Board Integrated Flyover (u/c), BTM 2nd Stage, BTM Layout, Viswamanava Kuvempu Ward, Bengaluru South City Corporation, Bengaluru, Bangalore South, Bengaluru North, Karnataka, 560068, India", "extratags": {"emergency": "yes", "healthcare": "hospital"}},
+      {"name": "Hi Tech Kidney Stone Hospital", "category": "amenity", "type": "hospital", "lat": "12.9271389", "lon": "77.5790280", "display_name": "Hi Tech Kidney Stone Hospital, 32nd Cross Road, Jayanagar 7th Block, Devagiri Temple Ward, Bengaluru West City Corporation, Bengaluru, Bangalore South, Bengaluru Urban, Karnataka, 560001, India", "extratags": {"email": "shridhar@hitechkidneystonehospital.org; suresh@hitechkidneystonehospital.org", "website": "http://www.hitechkidneystonehospital.org/", "operator:type": "private", "healthcare:speciality": "Dornier AlphaLithotripsy Treatment; X-Rays; US Scan; Urologist Consultation"}},
+      {"name": "Shanti Hospital", "category": "amenity", "type": "hospital", "lat": "12.9235041", "lon": "77.5857517", "display_name": "Shanti Hospital, 36th Cross Road, Jayanagar 4th Block, Byrasandra, Bengaluru South City Corporation, Bengaluru, Bangalore South, Bengaluru Urban, Karnataka, 560011, India", "extratags": null},
+      {"name": "Columbiaa Hospital", "category": "amenity", "type": "hospital", "lat": "13.0104342", "lon": "77.6583242", "display_name": "Columbiaa Hospital, B Channasandra Main Road, Vijaya Bank Colony, Banaswadi, Bengaluru North City Corporation, Bengaluru, Bangalore East, Bengaluru Urban, Karnataka, 560041, India", "extratags": {"check_date": "2026-04-26"}}
+    ];
+
+    const { win, doc } = await load('location.html');
+    const click = (e) => e.dispatchEvent(new win.Event('click', { bubbles: true }));
+    check(!!doc.querySelector('#nearbyBtn') && !!doc.querySelector('#nearbyOut'),
+      'the location page has the nearby scanner');
+
+    const calls = [];
+    win.fetch = async (url) => {
+      const u = String(url);
+      calls.push(u);
+      return { ok: true, status: 200, json: async () => (u.indexOf('q=police') >= 0 ? POLICE : HOSP) };
+    };
+    click(doc.querySelector('#nearbyBtn'));
+    await wait(3000);
+
+    const names = Array.from(doc.querySelectorAll('.nearby-item b')).map((n) => n.textContent);
+    check(names.length > 0, 'lists places near you');
+    check(doc.querySelectorAll('.nearby-group').length === 2, 'separates police stations from hospitals');
+    check(names.indexOf('Police Bazaar Road') < 0, 'ignores matches that are not police or hospitals');
+    check(names.every((n) => n.trim().length > 0), 'ignores unnamed places');
+    check(names.filter((v, i) => names.indexOf(v) !== i).length === 0, 'removes duplicates');
+
+    Array.from(doc.querySelectorAll('.nearby-group')).forEach((g) => {
+      const ds = Array.from(g.querySelectorAll('.nearby-meta')).map((n) => parseFloat(n.textContent));
+      check(ds.length > 0 && ds.every((d, i) => i === 0 || d >= ds[i - 1]), 'nearest first within a group');
+    });
+
+    const hrefs = Array.from(doc.querySelectorAll('.nearby-actions a')).map((a) => a.getAttribute('href'));
+    check(hrefs.some((h) => /google\.com\/maps\/dir/.test(h)), 'each place links to directions');
+    check(hrefs.some((h) => /^tel:\+?[0-9]+$/.test(h)), 'a known phone number becomes a tap-to-call link');
+    check(calls.length === 2, 'makes exactly two lookups (Nominatim allows one per second)');
+    check(calls.every((u) => u.indexOf('bounded=1') >= 0 && u.indexOf('viewbox=') >= 0),
+      'both lookups are restricted to the area around you');
+
+    const before = calls.length;
+    click(doc.querySelector('#nearbyBtn'));
+    await wait(500);
+    check(calls.length === before, 'a repeat scan of the same spot is served from cache');
+
+    const { win: w2, doc: d2 } = await load('location.html');
+    w2.fetch = async () => { throw new TypeError('Failed to fetch'); };
+    click(d2.querySelector('#nearbyBtn'));
+    await wait(1500);
+    const hint = d2.querySelector('#nearbyHint').textContent;
+    check(/could not be reached/i.test(hint), 'a failed scan explains itself');
+    check(/Open in Maps/i.test(hint), 'a failed scan points at the map fallback');
+  }
+
   console.log('\nlanguage switching');
   {
     const { doc, win } = await load('helplines.html');

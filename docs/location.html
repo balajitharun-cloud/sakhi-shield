@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/css/style.css?v=12">
+<link rel="stylesheet" href="assets/css/style.css?v=13">
 </head>
 <body>
 
@@ -73,6 +73,22 @@
       </div>
     </div>
   </section>
+  <section id="nearby">
+    <div class="section-head">
+      <span class="eyebrow">Around you</span>
+      <h2>Nearby police &amp; hospitals</h2>
+      <p class="dim">Scan the area around where you are now and list the closest police stations and hospitals. Each one opens directions in Maps, and a station with a known number gets a tap-to-call button.</p>
+    </div>
+    <div class="card">
+      <div class="row">
+        <button class="btn btn--solid" id="nearbyBtn" type="button">Scan nearby police &amp; hospitals</button>
+        <button class="btn" id="nearbyMapBtn" type="button">Open in Maps instead</button>
+      </div>
+      <p class="dim" id="nearbyHint" style="font-size:.78rem;margin:10px 0 0"></p>
+      <div id="nearbyOut" style="margin-top:14px"></div>
+    </div>
+  </section>
+
 </main>
 
 <footer class="footer">
@@ -114,9 +130,9 @@
 
 <div class="toast-host" id="toastHost" aria-live="polite" aria-atomic="false"></div>
 
-<script src="assets/js/i18n.js?v=12"></script>
-<script src="assets/js/data.js?v=12"></script>
-<script src="assets/js/core.js?v=12"></script>
-<script src="assets/js/location.js?v=12"></script>
+<script src="assets/js/i18n.js?v=13"></script>
+<script src="assets/js/data.js?v=13"></script>
+<script src="assets/js/core.js?v=13"></script>
+<script src="assets/js/location.js?v=13"></script>
 </body>
 </html>
