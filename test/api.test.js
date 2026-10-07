@@ -289,13 +289,13 @@ async function main() {
     check(homeHtml.includes('link-card'), 'home page links to the feature pages');
 
     const pages = ['sos.html', 'helplines.html', 'location.html', 'contacts.html', 'tools.html',
-                   'evidence.html', 'safety.html', 'rights.html', 'complaint.html', 'account.html'];
+                   'evidence.html', 'safety.html', 'rights.html', 'complaint.html'];
     let allPages = true;
     for (const p of pages) {
       const r2 = await raw('GET', base + '/' + p);
       if (r2.status !== 200 || !r2.text.includes('Sakhi Shield')) allPages = false;
     }
-    check(allPages, 'all 10 feature pages are served as separate pages');
+    check(allPages, 'all 9 feature pages are served as separate pages');
 
     const comp = await raw('GET', base + '/complaint.html');
     check(comp.text.includes('FIRST INFORMATION REPORT'), 'complaint page has the FIR sheet');
@@ -303,12 +303,10 @@ async function main() {
     check(comp.text.includes('id="reportPrintBtn"'), 'complaint page can print / save as PDF');
     check(comp.text.includes('id="reportHtmlBtn"'), 'complaint page can export the A4 sheet');
     check(comp.text.includes('Bharatiya Nagarik Suraksha Sanhita'), 'FIR sheet cites the correct statute');
-    const acct = await raw('GET', base + '/account.html');
-    check(acct.text.includes('id="serverUrl"'), 'account page has the backend URL field');
-    check((acct.text.match(/id="apiHint"/g) || []).length === 1, 'account page has exactly one auth-status element (was duplicated)');
-    check(acct.text.includes('id="serverHint"'), 'account page has a separate backend-status element');
-    check(acct.text.includes('id="passwordHint"'), 'account page has the password hint');
-    check(!acct.text.includes('loadAlertsBtn'), 'account page no longer has the dead alert-list button');
+    const gone = await raw('GET', base + '/account.html');
+    check(gone.status === 404, 'the account page is gone');
+    check(!comp.text.includes('reportCloudBtn'), 'the complaint sheet has no cloud-save button');
+    check(!homeHtml.includes('account.html'), 'nothing links to an account page');
     const sosjs = await raw('GET', base + '/assets/js/sos.js');
     check(sosjs.text.includes('/api/sos'), 'frontend is wired to the SOS endpoint');
     check(sosjs.text.includes('requestPermission'), 'frontend requests motion-sensor permission');

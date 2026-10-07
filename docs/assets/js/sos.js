@@ -340,7 +340,7 @@
     const host = $('#alertList');
     if (!host) return;
     if (!SS.getToken()) {
-      host.innerHTML = '<p class="placeholder">Sign in on the Account page to keep an alert history.</p>';
+      host.innerHTML = '<p class="placeholder">Alert history is kept on this device.</p>';
       return;
     }
     try {

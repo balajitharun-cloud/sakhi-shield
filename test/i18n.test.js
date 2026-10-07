@@ -65,10 +65,10 @@ function load(file) {
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const PAGES = ['index.html', 'sos.html', 'helplines.html', 'location.html', 'contacts.html',
-               'tools.html', 'evidence.html', 'safety.html', 'rights.html', 'complaint.html', 'account.html'];
+               'tools.html', 'evidence.html', 'safety.html', 'rights.html', 'complaint.html'];
 
 async function main() {
-  console.log('\nshared shell on all 11 pages');
+  console.log('\nshared shell on all 10 pages');
   for (const f of PAGES) {
     const { doc, win, errors } = await load(f);
     const ok = doc.querySelector('.brand__name') && doc.querySelector('.lang__btn[data-lang="hi"]') &&
@@ -83,7 +83,7 @@ async function main() {
     const { doc } = await load('helplines.html');
     const active = doc.querySelector('.nav a.is-active');
     check(active && active.getAttribute('href') === 'helplines.html', 'highlights the current page in the nav');
-    check(doc.querySelectorAll('.nav a').length === 12, 'nav lists 11 pages plus Chat');
+    check(doc.querySelectorAll('.nav a').length === 11, 'nav lists 10 pages plus Chat');
   }
 
   console.log('\nfeature pages');
@@ -155,9 +155,8 @@ async function main() {
     check(doc.querySelector('#sheetRef').value !== oldRef, 'Clear issues a fresh reference number');
   }
   {
-    const { doc } = await load('account.html');
-    check(!!doc.querySelector('#serverUrl') && !!doc.querySelector('#testServerBtn'), 'account page has the backend URL field');
-    check(!!doc.querySelector('#authForm'), 'account page has the login form');
+    check(!fs.existsSync(path.join(DIR, 'account.html')), 'the account page has been removed');
+    check(!fs.existsSync(path.join(DIR, 'assets/js/account.js')), 'the account script has been removed');
   }
   {
     const { doc } = await load('evidence.html');
@@ -168,12 +167,11 @@ async function main() {
     check(!!doc.querySelector('#tgAutoRecord'), 'evidence page has the auto-record toggle');
   }
   {
-    const { doc } = await load('account.html');
+    // the surviving pages must not have duplicate ids either
+    const { doc } = await load('complaint.html');
     const ids = Array.from(doc.querySelectorAll('[id]')).map((n) => n.id);
     const dupes = ids.filter((v, i) => ids.indexOf(v) !== i);
-    check(dupes.length === 0, 'account page has no duplicate element ids' + (dupes.length ? ': ' + dupes.join(', ') : ''));
-    check(!!doc.querySelector('#serverHint') && !!doc.querySelector('#passwordHint') && !!doc.querySelector('#acctCount'),
-      'account page has the new status elements');
+    check(dupes.length === 0, 'complaint page has no duplicate element ids' + (dupes.length ? ': ' + dupes.join(', ') : ''));
   }
   {
     const core = fs.readFileSync(path.join(DIR, 'assets/js/core.js'), 'utf8');
@@ -185,7 +183,7 @@ async function main() {
 
   console.log('\nserver discovery + request timeouts');
   {
-    const { win, doc } = await load('account.html');
+    const { win } = await load('index.html');
     check(win.SS.getApiBase() === 'https://sakhi-shield.onrender.com',
       'uses the built-in server address on a static host (no configuration needed)');
     check(win.SS.isBackendLikely() === true, 'a configured base counts as a backend');
@@ -194,10 +192,6 @@ async function main() {
     check(win.SS.getApiBase() === 'https://example.test', 'a saved override wins and the trailing slash is trimmed');
     win.SS.setApiBase('');
     check(win.SS.getApiBase() === 'https://sakhi-shield.onrender.com', 'clearing the override falls back to the default');
-
-    // the Backend URL box is no longer a required field in the main flow
-    const urlBox = doc.querySelector('#serverUrl');
-    check(!!urlBox && urlBox.closest('details') !== null, 'the server address is tucked into an advanced disclosure');
 
     // a hung request must time out rather than leaving the UI stuck
     win.fetch = (url, opts) => new Promise((resolve, reject) => {
@@ -219,109 +213,33 @@ async function main() {
     check(/Cannot reach the server/.test(err || ''), 'an unreachable server is reported plainly');
   }
 
-  console.log('\nbrowser-direct AI (works with no backend)');
+  console.log('\nassistant runs on the server only');
   {
-    const { win } = await load('account.html');
-    win.SS.setAI({ provider: 'groq', key: 'test-key', model: '' });
-    let captured = null;
-    win.fetch = async (url, opts) => {
-      captured = { url, opts };
-      return { ok: true, status: 200, json: async () => ({ choices: [{ message: { content: 'DIRECT OK' } }] }) };
-    };
-    const reply = await win.SS.askDirect('How do I file an FIR?');
-    check(reply === 'DIRECT OK', 'calls the AI provider directly from the browser');
-    check(captured && captured.url.includes('api.groq.com'), 'uses the Groq endpoint for the groq provider');
-    check(captured && /Bearer test-key/.test(captured.opts.headers.Authorization), 'sends the saved key as a bearer token');
+    const core = fs.readFileSync(path.join(DIR, 'assets/js/core.js'), 'utf8');
+    check(!/SS\.askDirect|directCall|detectProvider|SS\.getAI|SS\.setAI/.test(core),
+      'no client-side AI key machinery is left in the browser');
+    check(!core.includes('text.pollinations.ai') && !core.includes('api.groq.com'),
+      'the browser never calls an AI provider directly');
 
-    win.SS.setAI({ provider: 'groq', key: '', model: '' });
-    check((await win.SS.askDirect('hello')) === null, 'returns null when a key is required but missing');
+    const { win, doc } = await load('index.html');
+    const msgs = () => Array.from(doc.querySelectorAll('#chatLog .msg')).map((n) => n.textContent.trim());
 
-    win.SS.setAI({ provider: 'gemini', key: 'gk', model: '' });
-    captured = null;
-    win.fetch = async (url) => {
-      captured = url;
-      return { ok: true, status: 200, json: async () => ({ candidates: [{ content: { parts: [{ text: 'GEMINI OK' }] } }] }) };
-    };
-    check((await win.SS.askDirect('hi')) === 'GEMINI OK', 'supports the Gemini response shape');
-    check(captured && captured.includes('generativelanguage.googleapis.com'), 'uses the Gemini endpoint');
+    win.fetch = async () => ({ ok: true, status: 200, json: async () => ({ reply: 'SERVER OK' }) });
+    await win.SS.chatSend('How do I file an FIR?');
+    check(msgs().some((m) => m.includes('SERVER OK')), 'shows the reply the server returned');
+    check(!msgs().some((m) => m.includes('Thinking')), 'the thinking bubble is cleared on success');
 
-    // provider detection from the shape of the key
-    check(win.SS.detectProvider('gsk_abc') === 'groq', 'detects a Groq key');
-    check(win.SS.detectProvider('AIzaSy123') === 'gemini', 'detects a Gemini key');
-    check(win.SS.detectProvider('sk-or-v1-x') === 'openrouter', 'detects an OpenRouter key');
-    check(win.SS.detectProvider('sk-abc') === 'openai', 'detects an OpenAI key');
-    check(win.SS.detectProvider('nonsense') === null, 'returns null for an unrecognised key');
+    // a failing request must never leave the bubble stuck on screen
+    win.fetch = async () => { throw new TypeError('Failed to fetch'); };
+    await win.SS.chatSend('hello');
+    check(!msgs().some((m) => m.includes('Thinking')), 'a failed request never leaves "Thinking\u2026" behind');
+    check(msgs().some((m) => /could not answer|not connected/i.test(m)), 'a failed request explains itself');
 
-    // key saved but the provider left on the default
-    win.SS.setAI({ provider: 'pollinations', key: 'gsk_abc', model: '' });
-    const mixed = await win.SS.askDirectDebug('hi');
-    check(/provider is still/i.test(mixed.error || ''), 'explains when a key is set but the provider is still pollinations');
-
-    // a failing HTTP response must surface the real reason
-    win.SS.setAI({ provider: 'groq', key: 'bad', model: '' });
-    win.fetch = async () => ({ ok: false, status: 401, json: async () => ({ error: { message: 'Invalid API Key' } }) });
-    const bad = await win.SS.askDirectDebug('hi');
-    check(/401/.test(bad.error || '') && /Invalid API Key/.test(bad.error || ''), 'reports the real HTTP status and message');
-
-    // a missing key is explained, not silent
-    win.SS.setAI({ provider: 'groq', key: '', model: '' });
-    const nokey = await win.SS.askDirectDebug('hi');
-    check(/No API key saved/i.test(nokey.error || ''), 'explains when no key is saved');
-
-    // --- runtime model discovery: providers retire ids, so ask what exists ---
-    win.SS.setAI({ provider: 'gemini', key: 'gk', model: '' });
-    const tried = [];
-    win.fetch = async (url) => {
-      if (url.includes('/models?')) {
-        return { ok: true, status: 200, json: async () => ({ models: [
-          { name: 'models/gemini-1.5-flash', supportedGenerationMethods: ['generateContent'] },
-          { name: 'models/gemini-3.8-flash', supportedGenerationMethods: ['generateContent'] },
-          { name: 'models/embedding-001', supportedGenerationMethods: ['embedContent'] }
-        ] }) };
-      }
-      tried.push(url);
-      return { ok: true, status: 200, json: async () => ({ candidates: [{ content: { parts: [{ text: 'DISCOVERED OK' }] } }] }) };
-    };
-    const disc = await win.SS.askDirectDebug('hi');
-    check(disc.reply === 'DISCOVERED OK', 'discovers a working model at runtime');
-    check(disc.model === 'gemini-3.8-flash', 'picks the newest flash model, not the retired one');
-    check(!tried.some((u) => u.includes('gemini-1.5-flash')), 'never even tries the retired model');
-
-    win.SS.setAI({ provider: 'groq', key: 'gsk_x', model: '' });
-    let groqBody = null;
-    win.fetch = async (url, opts) => {
-      if (url.endsWith('/models')) {
-        return { ok: true, status: 200, json: async () => ({ data: [
-          { id: 'openai/gpt-oss-20b' }, { id: 'whisper-large-v3' }, { id: 'llama-guard-3-8b' }
-        ] }) };
-      }
-      groqBody = JSON.parse(opts.body);
-      return { ok: true, status: 200, json: async () => ({ choices: [{ message: { content: 'GROQ OK' } }] }) };
-    };
-    const g = await win.SS.askDirectDebug('hi');
-    check(g.reply === 'GROQ OK', 'discovers a working Groq model');
-    check(g.model === 'openai/gpt-oss-20b', 'skips whisper/guard models and picks a chat model');
-    check(groqBody && groqBody.model === 'openai/gpt-oss-20b', 'sends the discovered model id in the request');
-
-    // a retired id the user pinned still falls through to a working one
-    win.SS.setAI({ provider: 'groq', key: 'gsk_x', model: 'llama-3.1-8b-instant' });
-    win.fetch = async (url, opts) => {
-      if (url.endsWith('/models')) return { ok: true, status: 200, json: async () => ({ data: [{ id: 'openai/gpt-oss-20b' }] }) };
-      const b = JSON.parse(opts.body);
-      if (b.model === 'llama-3.1-8b-instant') {
-        return { ok: false, status: 404, json: async () => ({ error: { message: 'does not exist' } }) };
-      }
-      return { ok: true, status: 200, json: async () => ({ choices: [{ message: { content: 'FALLTHROUGH OK' } }] }) };
-    };
-    const fb = await win.SS.askDirectDebug('hi');
-    check(fb.reply === 'FALLTHROUGH OK', 'falls through a pinned-but-retired model to a working one');
-    check(fb.model === 'openai/gpt-oss-20b', 'reports which model actually answered');
+    // a non-200 from the server is reported, not swallowed
+    win.fetch = async () => ({ ok: false, status: 502, json: async () => ({ error: 'bad gateway' }) });
+    await win.SS.chatSend('hello again');
+    check(!msgs().some((m) => m.includes('Thinking')), 'an error response still clears the bubble');
   }
-  {
-    const { doc } = await load('index.html');
-    check(doc.querySelectorAll('#hub .link-card').length === 10, 'home page links to all 10 feature pages');
-  }
-
   console.log('\nlanguage switching');
   {
     const { doc, win } = await load('helplines.html');

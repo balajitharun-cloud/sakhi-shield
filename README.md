@@ -20,20 +20,18 @@ sakhi-shield/
 │   ├── safety.html           safety tips
 │   ├── rights.html           legal rights (India)
 │   ├── complaint.html        A4 F.I.R. sheet builder
-│   ├── account.html          account + backend connection
 │   └── assets/
 │       ├── css/style.css     all styling, shared by every page
 │       └── js/
-│           ├── i18n.js       the EN/HI/KN dictionary (291 strings)
-│           ├── data.js       helplines, tips, rights, chatbot knowledge base
-│           ├── core.js       utils, theme, i18n engine, API client, chatbot
-│           ├── sos.js        SOS, siren, motion sensor, auto-notify
+│           ├── i18n.js       the EN/HI/KN dictionary
+│           ├── data.js       helplines, tips and rights content
+│           ├── core.js       utils, theme, i18n engine, API client, assistant
+│           ├── sos.js        SOS, siren, motion sensor, contact alerts
 │           ├── location.js   live location and journey tracking
 │           ├── contacts.js   trusted contacts
 │           ├── tools.js      fake call + check-in timer
 │           ├── evidence.js   camera, recording and the evidence vault
 │           ├── complaint.js  the complaint sheet
-│           └── account.js    account and backend URL
 ├── server/
 │   ├── index.js          Express app + all routes
 │   ├── db.js             SQLite schema and queries (better-sqlite3)
@@ -51,10 +49,10 @@ sakhi-shield/
 ## Features
 
 **Front-end (works offline, no server needed)**
-- **One page per feature** - home, SOS, helplines, location, contacts, tools, evidence, safety, rights, complaint and account
+- **One page per feature** - home, SOS, helplines, location, contacts, tools, evidence, safety, rights and complaint
 - Mobile-first: 44px touch targets, 16px inputs (no iOS zoom), safe-area insets, responsive complaint sheet
 - Three languages - English, हिंदी and ಕನ್ನಡ - with a switcher in the header; the whole UI, the tips, the rights and the chatbot are translated
-- **Sakhi Assistant chatbot** - AI only. Every question goes to the backend, which calls a live AI provider. If no backend is connected the browser calls the AI provider directly instead (set the provider and key on the Account page). There is no canned keyword-answer fallback; if no AI service responds the assistant says so.
+- **Sakhi Assistant** - AI only, and it runs entirely on the server: the browser sends your question to `POST /api/chat` and the AI key never leaves the backend. Set `LLM_PROVIDER` and `LLM_API_KEY` in Render. There is no canned keyword-answer fallback; if the AI service does not respond the assistant says so, and it never leaves a question hanging.
 - **SOS with automatic delivery**: arming it sends your live location to your trusted contacts by itself - no extra tap
 - **Motion sensor**: shake the phone to arm the SOS, with a proper iOS permission request and a sensitivity setting
 - **Camera & recording** - take a photo, or record audio/video as proof. Everything is geo-tagged, timestamped and stored in an on-device vault (IndexedDB); download anything you need for the police. Can auto-start recording when the SOS fires.
@@ -67,8 +65,7 @@ sakhi-shield/
 - **A4 F.I.R. builder** - a detailed F.I.R.-format sheet (Sections A-F: occurrence, complainant, accused, witnesses/property, facts, action, plus an office-use block). It fills in live as you type, prints or saves as an A4 PDF, and exports as a standalone A4 `.html` file.
 
 **Backend (what the server adds)**
-- Accounts with hashed passwords and JWT login
-- Trusted contacts and complaint sheets stored per user in a database
+- The AI assistant, so the key stays on the server and not in the browser
 - `POST /api/sos` creates an alert, **emails/SMSes your contacts**, and returns a
   public live-location link
 - A public viewer at `/s/<token>` that a contact opens in any browser — no app needed
@@ -137,13 +134,14 @@ host such as Render, and the front-end then has to be told where it is.
    `https://<username>.github.io/sakhi-shield/`.
 2. Backend: on Render, **New -> Blueprint**, pick this repo. `render.yaml`
    configures the service. You get `https://<service-name>.onrender.com`.
-3. Point the front-end at it: open the **Account** page, paste that URL into
-   **Backend URL**, press **Save**. The URL is stored on the device, so no code
-   change or redeploy is needed.
+3. Nothing to point. The pages already carry the backend address, and the
+   blueprint names the service `sakhi-shield`, so `https://sakhi-shield.onrender.com`
+   is correct out of the box. If Render had to rename the service, edit the
+   `api-base` line in `build_pages.py` and rebuild, or set an override in the
+   page URL with `?api=https://your-service.onrender.com`.
 
-Until step 3 is done, account sign-up and cloud sync cannot work - the page will
-say *"No backend is reachable"*. The chatbot still works: it falls back to calling
-the AI provider directly from the browser (set it up on the Account page).
+The assistant needs the server, so until step 2 is done it will say it cannot
+reach it. Everything else works offline.
 
 ## Deploy on Render (free tier)
 
@@ -179,9 +177,9 @@ is a live URL even before the backend is deployed:
 https://<username>.github.io/sakhi-shield/
 ```
 
-Pages serves static files only, so on that URL the offline features (SOS, siren,
-helplines, tips, rights, report generator) work, but the Account section reports
-the server as unreachable until you deploy the backend and set the API origin:
+Pages serves static files only, so on that URL every offline feature works (SOS,
+siren, helplines, tips, rights, the F.I.R. builder, the on-device evidence vault).
+Only the assistant needs the backend. The address is already baked in:
 
 ```html
 <meta name="api-base" content="https://your-service.onrender.com">

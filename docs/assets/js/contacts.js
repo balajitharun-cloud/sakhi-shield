@@ -44,31 +44,5 @@
     SS.toast('Added ' + name, 'ok');
   });
 
-  const syncBtn = $('#syncContactsBtn');
-  if (syncBtn) syncBtn.addEventListener('click', async () => {
-    if (!SS.getToken()) { SS.toast('Sign in on the Account page first', 'err'); return; }
-    if (!contacts.length) { SS.toast('No local contacts to sync', 'err'); return; }
-    let added = 0, skipped = 0;
-    for (const c of contacts) {
-      try { await SS.api('/api/contacts', { method: 'POST', body: { name: c.name, phone: c.phone } }); added++; }
-      catch (e) { skipped++; }
-    }
-    SS.toast('Synced ' + added + ' contact(s)' + (skipped ? ' \u00b7 ' + skipped + ' skipped' : ''), added ? 'ok' : 'err');
-  });
-
-  const loadBtn = $('#loadCloudContacts');
-  if (loadBtn) loadBtn.addEventListener('click', async () => {
-    if (!SS.getToken()) { SS.toast('Sign in on the Account page first', 'err'); return; }
-    try {
-      const r = await SS.api('/api/contacts');
-      const cloud = r.contacts || [];
-      cloud.forEach((c) => {
-        if (!contacts.some((x) => x.phone === c.phone)) contacts.push({ name: c.name, phone: c.phone });
-      });
-      SS.setContacts(contacts); render();
-      SS.toast('Pulled ' + cloud.length + ' contact(s) from the cloud', 'ok');
-    } catch (e) { SS.toast(e.message, 'err'); }
-  });
-
   render();
 })();

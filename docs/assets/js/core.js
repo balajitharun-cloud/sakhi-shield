@@ -149,12 +149,12 @@
 
   /* ============================================================
      API client
-     Base URL order: what the user saved in the Account page, then
+     Base URL order: a saved override, then
      the <meta name="api-base"> tag, then same origin.
      ============================================================ */
   // Where the backend lives. No configuration needed by the user:
   //   1. ?api=<url> in the address bar wins (escape hatch)
-  //   2. a saved override (the Account page's advanced field)
+  //   2. a saved override, if one was set
   //   3. if this page is served BY the backend, use the same origin
   //   4. otherwise the default baked into the page
   SS.getApiBase = function () {
@@ -280,199 +280,16 @@
 
   // The assistant is AI-only: every question goes to the backend, which is
   // backed by a live AI provider. There is no local canned-answer fallback.
+  // The assistant runs entirely on the server, which is where the AI key lives.
+  // Nothing secret is ever stored in the browser.
   async function askServer(msg) {
-    if (!SS.getApiBase() && !SS.isBackendLikely()) return null;
-    try {
-      const r = await SS.api('/api/chat', { method: 'POST', body: { message: msg, lang: LANG }, timeout: 6000 });
-      return (r && r.reply) ? r.reply : null;
-    } catch (e) { return null; }
+    const r = await SS.api('/api/chat', {
+      method: 'POST',
+      body: { message: msg, lang: LANG },
+      timeout: 25000
+    });
+    return (r && r.reply) ? String(r.reply).trim() : null;
   }
-
-  /* ---------- direct (browser) AI, for when there is no backend ---------- */
-  const AI_SYSTEM =
-    'You are Sakhi Assistant, a calm, practical safety assistant for women in India. ' +
-    'Give short, concrete, actionable steps. Never blame the user. Mention the relevant ' +
-    'Indian helpline or law when useful (112 emergency, 181 women helpline, 1091, 1930 cyber). ' +
-    'You are not a lawyer or a doctor. Keep answers under 120 words.';
-
-  SS.getAI = () => SS.store.get('ss_ai', { provider: 'pollinations', key: '', model: '' });
-  SS.setAI = (v) => SS.store.set('ss_ai', v);
-
-  // Guess the provider from the shape of the key, so a pasted key "just works".
-  function detectProvider(key) {
-    const k = String(key || '').trim();
-    if (/^gsk_/.test(k)) return 'groq';
-    if (/^AIza/.test(k)) return 'gemini';
-    if (/^sk-or-/.test(k)) return 'openrouter';
-    if (/^sk-/.test(k)) return 'openai';
-    return null;
-  }
-  SS.detectProvider = detectProvider;
-
-  // Returns { reply } on success or { error } with a human-readable reason.
-  // Providers retire model ids on a schedule, so never trust a hard-coded name.
-  // Ask the provider what it actually serves and pick from that.
-  function preferFlash(names) {
-    const score = (n) => {
-      let s = 0;
-      if (n.indexOf('flash') >= 0) s += 100;
-      if (n.indexOf('lite') >= 0) s += 10;
-      if (n.indexOf('preview') >= 0 || n.indexOf('exp') >= 0) s -= 25;
-      const v = n.match(/(\d+)\.(\d+)/);
-      if (v) s += parseInt(v[1], 10) * 10 + parseInt(v[2], 10);
-      return s;
-    };
-    return names.slice().sort((a, b) => score(b) - score(a));
-  }
-
-  async function discoverModels(provider, key, signal, diag) {
-    try {
-      if (provider === 'gemini') {
-        const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models?key=' +
-          encodeURIComponent(key), { signal });
-        if (!r.ok) { if (diag) diag.listStatus = r.status; return []; }
-        const d = await r.json().catch(() => null);
-        const names = ((d && d.models) || [])
-          .filter((m) => (m.supportedGenerationMethods || []).indexOf('generateContent') >= 0)
-          .map((m) => String(m.name || '').replace(/^models\//, ''))
-          .filter((n) => n && n.indexOf('embedding') < 0 && n.indexOf('aqa') < 0);
-        return preferFlash(names);
-      }
-      const bases = {
-        groq: 'https://api.groq.com/openai/v1',
-        openai: 'https://api.openai.com/v1',
-        openrouter: 'https://openrouter.ai/api/v1'
-      };
-      const base = bases[provider];
-      if (!base) return [];
-      const r = await fetch(base + '/models', {
-        headers: { Authorization: 'Bearer ' + key }, signal
-      });
-      if (!r.ok) { if (diag) diag.listStatus = r.status; return []; }
-      const d = await r.json().catch(() => null);
-      const names = ((d && d.data) || []).map((m) => m.id).filter(Boolean)
-        .filter((n) => !/whisper|guard|tts|embed|moderation|image|audio/i.test(n));
-      return preferFlash(names);
-    } catch (e) {
-      return [];
-    }
-  }
-
-  async function directCall(msg) {
-    const cfg = SS.getAI();
-    const provider = cfg.provider || 'pollinations';
-    const key = String(cfg.key || '').trim();
-    const configured = String(cfg.model || '').trim();
-    const langName = { en: 'English', hi: 'Hindi', kn: 'Kannada' }[LANG] || 'English';
-    const system = AI_SYSTEM + ' Reply in ' + langName + '.';
-
-    if (provider !== 'pollinations' && !key) {
-      return { error: 'No API key saved for ' + provider + '. Paste the key and press Save.' };
-    }
-    if (provider === 'pollinations' && key) {
-      return { error: 'A key is saved but the provider is still "pollinations". Choose Groq or Gemini and press Save.' };
-    }
-
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 25000);
-    const describe = (status, detail) =>
-      provider + ' returned HTTP ' + status + (detail ? ' - ' + detail : '');
-
-    try {
-      if (provider === 'pollinations') {
-        const url = 'https://text.pollinations.ai/' +
-          encodeURIComponent(system + '\n\n' + msg) + '?model=' + encodeURIComponent(configured || 'openai');
-        const r = await fetch(url, { signal: ctrl.signal });
-        if (!r.ok) return { error: describe(r.status) };
-        const t = await r.text();
-        return t ? { reply: t.trim() } : { error: 'pollinations returned an empty reply.' };
-      }
-
-      // Build the candidate list: what the user chose, then what the provider
-      // actually serves right now, then a small safety net.
-      // 'gemini-flash-latest' is an alias Google keeps pointed at a live model,
-      // so it survives retirements.
-      const SAFETY = {
-        gemini: ['gemini-flash-latest', 'gemini-3.8-flash', 'gemini-2.5-flash', 'gemini-1.5-flash'],
-        groq: ['openai/gpt-oss-20b', 'openai/gpt-oss-120b'],
-        openai: ['gpt-4o-mini', 'gpt-4o'],
-        openrouter: ['meta-llama/llama-3.1-8b-instruct:free']
-      };
-      const diag = {};
-      const discovered = await discoverModels(provider, key, ctrl.signal, diag);
-      let models = (configured ? [configured] : []).concat(discovered, SAFETY[provider] || []);
-      models = models.filter((m, i) => m && models.indexOf(m) === i);
-
-      let last = null;
-      for (const m of models) {
-        if (provider === 'gemini') {
-          const url = 'https://generativelanguage.googleapis.com/v1beta/models/' +
-            m + ':generateContent?key=' + encodeURIComponent(key);
-          const r = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              systemInstruction: { parts: [{ text: system }] },
-              contents: [{ role: 'user', parts: [{ text: msg }] }]
-            }),
-            signal: ctrl.signal
-          });
-          const d = await r.json().catch(() => null);
-          if (r.ok) {
-            const c = d && d.candidates && d.candidates[0] && d.candidates[0].content;
-            const t = c && c.parts && c.parts[0] && c.parts[0].text;
-            if (t) return { reply: String(t).trim(), model: m };
-            last = { error: 'Gemini (' + m + ') returned no text.' };
-            continue;
-          }
-          last = { error: describe(r.status, d && d.error && d.error.message) };
-          if (r.status === 404 || r.status === 400) continue;   // model gone - try the next
-          return last;
-        }
-
-        const bases = {
-          groq: 'https://api.groq.com/openai/v1',
-          openai: 'https://api.openai.com/v1',
-          openrouter: 'https://openrouter.ai/api/v1'
-        };
-        const base = bases[provider];
-        if (!base) return { error: 'Unknown provider: ' + provider };
-        const r = await fetch(base + '/chat/completions', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key },
-          body: JSON.stringify({
-            model: m,
-            messages: [{ role: 'system', content: system }, { role: 'user', content: msg }],
-            temperature: 0.3,
-            max_tokens: 400
-          }),
-          signal: ctrl.signal
-        });
-        const d = await r.json().catch(() => null);
-        if (r.ok) {
-          const t = d && d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content;
-          if (t) return { reply: String(t).trim(), model: m };
-          last = { error: provider + ' (' + m + ') returned no text.' };
-          continue;
-        }
-        last = { error: describe(r.status, d && d.error && d.error.message) };
-        if (r.status === 404) continue;   // model retired - try the next
-        return last;
-      }
-      const extra = ' [model list: ' + (discovered.length ? discovered.length + ' found' : 'none') +
-        (diag.listStatus ? ', HTTP ' + diag.listStatus : '') +
-        '; tried: ' + models.slice(0, 3).join(', ') + ']';
-      return last ? { error: last.error + extra }
-                  : { error: provider + ' had no usable model.' + extra };
-    } catch (e) {
-      return { error: (e && e.name === 'AbortError') ? 'Timed out after 25s.' : 'Network error: ' + (e && e.message) };
-    } finally {
-      clearTimeout(timer);
-    }
-  }
-
-  SS.askDirect = async function (msg) { const r = await directCall(msg); return r.reply || null; };
-  SS.askDirectDebug = directCall;
 
   SS.renderChips = function () {
     const host = $('#chatChips');
@@ -521,19 +338,22 @@
     const thinking = addMsg('Thinking\u2026', 'bot');
     if (thinking) thinking.classList.add('msg--typing');
 
-    // AI only - the backend first, then a direct browser call if there is no
-    // backend connected. If both fail, say so plainly.
-    // Do not let a slow or sleeping backend hold the answer hostage: give it a
-    // short window, then fall through to the direct browser call.
-    let answer = await Promise.race([
-      askServer(msg),
-      new Promise((r) => setTimeout(() => r(null), 5000))
-    ]);
-    if (!answer) answer = await askDirect(msg);
-    if (!answer) {
-      answer = 'I could not reach the AI service just now. Open the Account page to set your AI provider, or try again in a moment.';
+    let answer = null, why = null;
+    try {
+      answer = await askServer(msg);
+    } catch (e) {
+      why = e && e.message;
     }
+    // The bubble is always cleared, whatever happened.
     if (thinking) thinking.remove();
+
+    if (!answer) {
+      addMsg(!SS.isBackendLikely()
+        ? 'The assistant needs the server, which is not connected to this site yet.'
+        : 'The assistant could not answer just now' + (why ? ' (' + why + ')' : '') +
+          '. Please try again in a moment.', 'bot');
+      return;
+    }
     addMsg(answer, 'bot');
   };
 

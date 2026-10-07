@@ -217,21 +217,5 @@
     SS.toast('Form and sheet cleared', 'ok');
   });
 
-  const cloudBtn = $('#reportCloudBtn');
-  if (cloudBtn) cloudBtn.addEventListener('click', async () => {
-    if (!SS.getToken()) { SS.toast('Sign in on the Account page first', 'err'); return; }
-    const fix = SS.getFix();
-    try {
-      await SS.api('/api/complaints', { method: 'POST', body: {
-        ref: v('#sheetRef'), offence: v('#cOffence'), station: v('#cStation'), place: v('#cPlace'),
-        happenedAt: v('#cWhen'), people: v('#cPeople'), witnesses: v('#cWitness'),
-        injury: v('#cInjury'), action: v('#cAction'), earlier: v('#cPrev'),
-        description: v('#cDesc'), text: plainText(), declared: Boolean(decl && decl.checked),
-        lat: fix ? fix.lat : null, lng: fix ? fix.lng : null
-      } });
-      SS.toast('Saved to the cloud', 'ok');
-    } catch (e) { SS.toast(e.message, 'err'); }
-  });
-
   sync();
 })();

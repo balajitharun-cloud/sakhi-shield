@@ -4,15 +4,13 @@ Two pieces, deployed separately:
 
 | Piece | Where | What it does |
 |---|---|---|
-| Front-end | GitHub Pages (already live) | All 11 pages. Works offline. |
-| Backend | Render | Accounts, cloud sync, SOS alerts by SMS/email |
+| Front-end | GitHub Pages (already live) | All 10 pages. Works offline. |
+| Backend | Render | The AI assistant (and the API for SOS alerts / live-location links) |
 
-GitHub Pages cannot run a Node server, so the backend needs its own host. That is
-why account sign-up and cloud sync do not work on the Pages URL until you finish
-the steps below.
-
-**The chatbot is the exception** - it can call the AI provider straight from the
-browser, so it works without a backend. Set it up on the Account page.
+GitHub Pages cannot run a Node server, so the backend needs its own host. The
+front-end works fully offline without it; the one feature that needs the server is
+**Sakhi Assistant**, because the AI key is held on the server rather than in the
+browser.
 
 ---
 
@@ -41,29 +39,26 @@ Build Command `npm install` and Start Command `npm start`.
 The Pages site already knows where the backend lives: the address is built into
 the pages as `https://sakhi-shield.onrender.com`, which is what the blueprint
 names the service. So if the service is called `sakhi-shield`, **there is nothing
-to do** - accounts, login, cloud upload and alerts work as soon as Render is live.
+to do** - the assistant works as soon as Render is live.
 
 If Render had to name it something else (it appends a suffix when a name is taken,
 e.g. `sakhi-shield-a1b2.onrender.com`), you have two options:
 
 - **Easiest:** in Render, rename the service to `sakhi-shield`.
-- **Or** open the Account page, expand **Server address (advanced)**, paste the
-  real URL and press Save. It is remembered on that device.
+- **Or** append the real URL to the page address once: `?api=https://your-service.onrender.com`.
+  It is remembered on that device.
 
 To change it for everyone, edit the `api-base` line in `build_pages.py` and
 rebuild (`python3 build_pages.py`), then commit.
 
-Press **Check connection** on the Account page to confirm. It should read:
-`Connected. Alerts - email: off, SMS: off, AI chat: on.` A sleeping free instance
-can take ~30 seconds to wake - press it again if it times out.
-
 ## 3. Privacy - what is stored where
 
-- Passwords are hashed with bcrypt; the plaintext is never stored or logged.
-- Login issues a signed JWT with an expiry; it is the only credential the app keeps.
-- Cloud files are scoped to the owning account - a different user gets `404`,
-  which is covered by a test.
-- F.I.R. PDFs, contacts and recordings live on the server, not in the browser.
+- The AI key lives in the server's environment variables and is never sent to the
+  browser. There is no key field anywhere in the front-end.
+- Trusted contacts, evidence and the F.I.R. draft stay on the device (localStorage
+  and IndexedDB). Nothing is uploaded.
+- The server hashes passwords with bcrypt and issues short-lived JWTs, but the
+  front-end no longer exposes an account screen.
 
 ## 4. Optional - make the alerts actually send
 
@@ -79,9 +74,9 @@ you can test the whole flow for free. To send for real, add these in Render unde
 
 Saving an environment variable triggers a redeploy.
 
-For AI chat, `LLM_PROVIDER=groq` with a free key from **console.groq.com** is the
-most reliable option. The default `pollinations` needs no key but is frequently
-down.
+For the assistant, `LLM_PROVIDER=groq` with a free key from **console.groq.com** is
+the most reliable option. The default `pollinations` needs no key but is frequently
+down, which is why the assistant used to sit on "Thinking..." and give up.
 
 ---
 
@@ -90,20 +85,20 @@ down.
 - **The free instance sleeps** after ~15 minutes idle. The next request takes
   ~30 seconds to wake it. Normal, not a bug.
 - **The filesystem is ephemeral.** The SQLite file is wiped on every redeploy or
-  restart, so registered accounts disappear. Fine for a demo; attach a paid
-  persistent disk or move `server/db.js` to Postgres for real use.
-- **Data lives in two places.** Contacts you add on the Contacts page are on the
-  device. Signing in and pressing "Sync contacts" copies them to the server.
+  restart. Fine for a demo; uncomment the `disk:` block in `render.yaml` and set
+  `DB_PATH=/var/data/sakhi.sqlite` for durable storage.
+- **Everything the user creates stays on the device.** Contacts, evidence and the
+  F.I.R. draft never leave the browser.
 
 ## Troubleshooting
 
 | What you see | What it means |
 |---|---|
-| `No backend is connected to this site yet` | Step 2 is not done, or the URL is wrong. |
-| `Not reachable (Cannot reach the server)` | The Render URL is wrong, or the service is asleep - wait 30s and retry. |
+| `No server is connected to this site yet` | Step 2 is not done, or the URL is wrong. |
+| `Cannot reach the server` | The Render URL is wrong, or the service is asleep - wait 30s and retry. |
+| `The server did not answer within 25 seconds` | The service was asleep or the AI provider is slow; retry. |
 | Render build fails on `better-sqlite3` | Re-run the deploy; it is usually a transient native-build hiccup. |
-| `That email already has an account` | Switch to **Log in** on the Account page. |
-| Chatbot says it could not reach the AI service | Set a provider and key on the Account page, or add `LLM_API_KEY` in Render. |
+| The assistant says it could not answer | `LLM_API_KEY` is unset in Render, or the provider is down. |
 
 ## Running it locally instead
 
