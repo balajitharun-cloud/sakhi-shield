@@ -9,7 +9,8 @@ reports, and publishing a live-location link others can open.
 
 ```
 sakhi-shield/
-├── public/index.html     the whole front-end (HTML + CSS + JS, no build step)
+├── docs/index.html       the whole front-end (HTML + CSS + JS, no build step)
+│                         also served by GitHub Pages
 ├── server/
 │   ├── index.js          Express app + all routes
 │   ├── db.js             SQLite schema and queries (better-sqlite3)
@@ -105,11 +106,18 @@ after that takes ~30s to wake), and the filesystem is ephemeral — the SQLite f
 resets on redeploy. Use a paid persistent disk, or swap `db.js` for Postgres, if
 you need durable data.
 
-### Hosting the front-end on GitHub Pages instead
+### Front-end on GitHub Pages
 
-GitHub Pages can serve `public/index.html`, but it can't run the server. If you
-split them, set the API origin in the page's head so the front-end knows where the
-backend lives:
+The front-end is also published on GitHub Pages from the `docs/` folder, so there
+is a live URL even before the backend is deployed:
+
+```
+https://<username>.github.io/sakhi-shield/
+```
+
+Pages serves static files only, so on that URL the offline features (SOS, siren,
+helplines, tips, rights, report generator) work, but the Account section reports
+the server as unreachable until you deploy the backend and set the API origin:
 
 ```html
 <meta name="api-base" content="https://your-service.onrender.com">
