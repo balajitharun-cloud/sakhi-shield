@@ -233,14 +233,34 @@
   const aiTest = $('#aiTestBtn');
   if (aiTest) aiTest.addEventListener('click', async () => {
     const hint = $('#aiHint');
-    if (hint) hint.textContent = 'Asking the assistant\u2026';
-    const res = await SS.askDirectDebug('Reply with exactly: OK');
-    if (hint) {
-      hint.textContent = res.reply
-        ? 'Working. The assistant replied: ' + String(res.reply).slice(0, 80)
-        : 'Failed: ' + (res.error || 'no reply') + '  (provider: ' + (SS.getAI().provider || 'pollinations') + ')';
+    const say = (t) => { if (hint) hint.textContent = t; };
+    say('Asking the assistant\u2026 (this can take a few seconds)');
+
+    let res;
+    try {
+      // Guard against a stale cached core.js that predates this function, and
+      // never leave the message hanging if the request never settles.
+      if (typeof SS.askDirectDebug !== 'function') {
+        say('This page is running an old cached script. Hard-refresh (Ctrl+Shift+R) and try again.');
+        SS.toast('Stale script - hard-refresh the page', 'err');
+        return;
+      }
+      res = await Promise.race([
+        SS.askDirectDebug('Reply with exactly: OK'),
+        new Promise((r) => setTimeout(() => r({ error: 'No response after 30 seconds.' }), 30000))
+      ]);
+    } catch (e) {
+      res = { error: 'Unexpected error: ' + (e && e.message) };
     }
-    SS.toast(res.reply ? 'AI assistant is working' : 'AI assistant failed', res.reply ? 'ok' : 'err');
+
+    if (res && res.reply) {
+      say('Working. The assistant replied: ' + String(res.reply).slice(0, 80));
+      SS.toast('AI assistant is working', 'ok');
+    } else {
+      say('Failed: ' + ((res && res.error) || 'no reply') +
+          '  (provider: ' + (SS.getAI().provider || 'pollinations') + ')');
+      SS.toast('AI assistant failed', 'err');
+    }
   });
   paintAI();
 
