@@ -4,11 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#c81e4a">
-<meta name="description" content="Sakhi Shield - a women safety toolkit. Share your live location and track a journey.">
+<meta name="description" content="Sakhi Shield - a women safety toolkit. Capture photos, audio and video as evidence, stored on your device.">
 <!-- When the front-end is hosted separately from the API (e.g. GitHub Pages),
      set the backend origin here, or paste it on the Account page. -->
 <meta name="api-base" content="">
-<title>Live location &middot; Sakhi Shield</title>
+<title>Camera & recording &middot; Sakhi Shield</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -46,34 +46,52 @@
 </header>
 
 <main class="wrap">
-<section id="location">
-    <div class="section-head">
-      <span class="eyebrow">Live location</span>
-      <h2>Share where you are</h2>
-      <p class="dim">Grab your GPS coordinates, copy a Google Maps link, or send it straight to your trusted contacts.</p>
-    </div>
-    <div class="grid grid--2">
-      <div class="card">
-        <div class="row" style="margin-bottom:12px">
-          <button class="btn btn--solid" id="getLocBtn">📍 Get my location</button>
-          <button class="btn" id="watchBtn" aria-pressed="false">🛰 Track journey: off</button>
-        </div>
-        <div class="loc-box mono" id="locOut">No location yet — tap “Get my location”.</div>
-        <div class="row" style="margin-top:12px">
-          <button class="btn btn--sm" id="copyLocBtn">Copy link</button>
-          <button class="btn btn--sm" id="shareLocBtn">Share</button>
-          <button class="btn btn--sm" id="waLocBtn">Send on WhatsApp</button>
-          <button class="btn btn--sm" id="smsLocBtn">Send SMS</button>
-        </div>
-        <p class="dim" style="font-size:.78rem;margin-top:12px;margin-bottom:0" id="journeyInfo"></p>
+  <div class="section-head">
+    <span class="eyebrow">Evidence</span>
+    <h2>Camera &amp; recording</h2>
+    <p class="dim">Capture photos, audio or video as proof. Everything is stored only on this device - nothing is uploaded anywhere.</p>
+  </div>
+
+  <div class="ev-note">
+    Photos and recordings stay on this device and are geo-tagged and timestamped. Recording other people
+    may be restricted by law where you live - use this for your own protection and evidence. Recording
+    stops if you close or background this page.
+  </div>
+
+  <div class="grid grid--2" style="margin-top:16px">
+    <div class="card">
+      <div class="cam-wrap" id="camWrap">
+        <video id="camVideo" playsinline muted></video>
+        <div class="cam-off" id="camOff">Camera is off. Start it to take a photo, or record audio without the camera.</div>
+        <span class="rec-badge" id="recBadge"><i></i> REC <span id="recClock">00:00</span></span>
       </div>
-      <div class="card" style="padding:12px">
-        <div class="mini-map" id="mapBox">
-          <div class="placeholder">Your map preview appears here once location is shared.</div>
-        </div>
+      <div class="row" style="margin-top:12px">
+        <button class="btn btn--solid" id="camStartBtn" type="button">Start camera</button>
+        <button class="btn" id="camStopBtn" type="button" hidden>Stop camera</button>
+        <button class="btn btn--accent" id="snapBtn" type="button" disabled>Take photo</button>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <button class="btn" id="recAudioBtn" type="button">Record audio</button>
+        <button class="btn" id="recVideoBtn" type="button">Record video</button>
+        <button class="btn btn--solid" id="recStopBtn" type="button" hidden>Stop recording</button>
+      </div>
+      <div class="switch" style="margin-top:14px">
+        <div class="switch__text"><b>Auto-record when SOS fires</b><span>Starts a video recording together with the SOS</span></div>
+        <button class="toggle" id="tgAutoRecord" role="switch" aria-checked="false" aria-label="Auto record when SOS fires"></button>
       </div>
     </div>
-  </section>
+
+    <div class="card">
+      <h3>Evidence vault</h3>
+      <p class="dim" style="font-size:.84rem">Every capture is timestamped and, where available, geo-tagged. Download anything you need to hand to the police.</p>
+      <div class="row" style="margin-bottom:12px">
+        <button class="btn btn--sm" id="evRefreshBtn" type="button">Refresh</button>
+        <button class="btn btn--sm" id="evClearBtn" type="button">Clear all</button>
+      </div>
+      <div class="ev-grid" id="evList"></div>
+      <p class="placeholder" id="evEmpty">No evidence yet. Anything you capture is stored only on this device.</p>
+    </div>
+  </div>
 </main>
 
 <footer class="footer">
@@ -105,6 +123,6 @@
 <script src="assets/js/i18n.js"></script>
 <script src="assets/js/data.js"></script>
 <script src="assets/js/core.js"></script>
-<script src="assets/js/location.js"></script>
+<script src="assets/js/evidence.js"></script>
 </body>
 </html>

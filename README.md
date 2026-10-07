@@ -16,6 +16,7 @@ sakhi-shield/
 │   ├── location.html         live location + journey tracking
 │   ├── contacts.html         trusted contacts
 │   ├── tools.html            fake call, check-in timer, sensor settings
+│   ├── evidence.html         camera, audio/video recording, evidence vault
 │   ├── safety.html           safety tips
 │   ├── rights.html           legal rights (India)
 │   ├── complaint.html        Form SS-1 police complaint sheet
@@ -30,6 +31,7 @@ sakhi-shield/
 │           ├── location.js   live location and journey tracking
 │           ├── contacts.js   trusted contacts
 │           ├── tools.js      fake call + check-in timer
+│           ├── evidence.js   camera, recording and the evidence vault
 │           ├── complaint.js  the complaint sheet
 │           └── account.js    account and backend URL
 ├── server/
@@ -40,8 +42,8 @@ sakhi-shield/
 │   ├── chat.js           AI chat: 6 providers, or a built-in knowledge base
 │   └── sharePage.js      the public live-location viewer page
 ├── test/
-│   ├── api.test.js       end-to-end API test (66 checks)
-│   └── i18n.test.js      front-end test across all 10 pages (48 checks)
+│   ├── api.test.js       end-to-end API test (69 checks)
+│   └── i18n.test.js      front-end test across all 11 pages (55 checks)
 ├── render.yaml           one-click Render blueprint
 └── .env.example          every config knob, documented
 ```
@@ -49,12 +51,13 @@ sakhi-shield/
 ## Features
 
 **Front-end (works offline, no server needed)**
-- **One page per feature** - home, SOS, helplines, location, contacts, tools, safety, rights, complaint and account
+- **One page per feature** - home, SOS, helplines, location, contacts, tools, evidence, safety, rights, complaint and account
 - Mobile-first: 44px touch targets, 16px inputs (no iOS zoom), safe-area insets, responsive complaint sheet
 - Three languages - English, हिंदी and ಕನ್ನಡ - with a switcher in the header; the whole UI, the tips, the rights and the chatbot are translated
 - **Sakhi Assistant chatbot** backed by a live AI API, with a localised knowledge base as the offline fallback
 - **SOS with automatic delivery**: arming it sends your live location to your trusted contacts by itself - no extra tap
 - **Motion sensor**: shake the phone to arm the SOS, with a proper iOS permission request and a sensitivity setting
+- **Camera & recording** - take a photo, or record audio/video as proof. Everything is geo-tagged, timestamped and stored in an on-device vault (IndexedDB); download anything you need for the police. Can auto-start recording when the SOS fires.
 - Panic siren generated with the Web Audio API
 - Emergency helplines (India): 112, 100, 101, 102, 181, 1091, NCW, 1098, Tele-MANAS 14416, 1930
 - Live location, journey tracking, map preview

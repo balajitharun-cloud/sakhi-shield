@@ -65,10 +65,10 @@ function load(file) {
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const PAGES = ['index.html', 'sos.html', 'helplines.html', 'location.html', 'contacts.html',
-               'tools.html', 'safety.html', 'rights.html', 'complaint.html', 'account.html'];
+               'tools.html', 'evidence.html', 'safety.html', 'rights.html', 'complaint.html', 'account.html'];
 
 async function main() {
-  console.log('\nshared shell on all 10 pages');
+  console.log('\nshared shell on all 11 pages');
   for (const f of PAGES) {
     const { doc, win, errors } = await load(f);
     const ok = doc.querySelector('.brand__name') && doc.querySelector('.lang__btn[data-lang="hi"]') &&
@@ -83,7 +83,7 @@ async function main() {
     const { doc } = await load('helplines.html');
     const active = doc.querySelector('.nav a.is-active');
     check(active && active.getAttribute('href') === 'helplines.html', 'highlights the current page in the nav');
-    check(doc.querySelectorAll('.nav a').length === 11, 'nav lists 10 pages plus Chat');
+    check(doc.querySelectorAll('.nav a').length === 12, 'nav lists 11 pages plus Chat');
   }
 
   console.log('\nfeature pages');
@@ -131,8 +131,16 @@ async function main() {
     check(!!doc.querySelector('#authForm'), 'account page has the login form');
   }
   {
+    const { doc } = await load('evidence.html');
+    check(!!doc.querySelector('#camVideo') && !!doc.querySelector('#camStartBtn'), 'evidence page has the camera');
+    check(!!doc.querySelector('#recAudioBtn') && !!doc.querySelector('#recVideoBtn') && !!doc.querySelector('#recStopBtn'), 'evidence page has audio and video recording');
+    check(!!doc.querySelector('#snapBtn'), 'evidence page can take a photo');
+    check(!!doc.querySelector('#evList') && !!doc.querySelector('#evEmpty'), 'evidence page has the vault');
+    check(!!doc.querySelector('#tgAutoRecord'), 'evidence page has the auto-record toggle');
+  }
+  {
     const { doc } = await load('index.html');
-    check(doc.querySelectorAll('#hub .link-card').length === 9, 'home page links to all 9 feature pages');
+    check(doc.querySelectorAll('#hub .link-card').length === 10, 'home page links to all 10 feature pages');
   }
 
   console.log('\nlanguage switching');

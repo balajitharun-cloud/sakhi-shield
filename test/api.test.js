@@ -205,13 +205,13 @@ async function main() {
     check(homeHtml.includes('link-card'), 'home page links to the feature pages');
 
     const pages = ['sos.html', 'helplines.html', 'location.html', 'contacts.html', 'tools.html',
-                   'safety.html', 'rights.html', 'complaint.html', 'account.html'];
+                   'evidence.html', 'safety.html', 'rights.html', 'complaint.html', 'account.html'];
     let allPages = true;
     for (const p of pages) {
       const r2 = await raw('GET', base + '/' + p);
       if (r2.status !== 200 || !r2.text.includes('Sakhi Shield')) allPages = false;
     }
-    check(allPages, 'all 9 feature pages are served as separate pages');
+    check(allPages, 'all 10 feature pages are served as separate pages');
 
     const comp = await raw('GET', base + '/complaint.html');
     check(comp.text.includes('Form SS-1'), 'complaint page has the police complaint sheet');
@@ -221,6 +221,11 @@ async function main() {
     check(sosjs.text.includes('/api/sos'), 'frontend is wired to the SOS endpoint');
     check(sosjs.text.includes('requestPermission'), 'frontend requests motion-sensor permission');
     check(sosjs.text.includes('autoNotify'), 'frontend auto-sends the SOS to contacts');
+    check(sosjs.text.includes('startAutoRecord'), 'SOS can start an evidence recording');
+    const evPage = await raw('GET', base + '/evidence.html');
+    check(evPage.text.includes('id="camVideo"') && evPage.text.includes('id="recAudioBtn"'), 'evidence page has camera and recording');
+    const evjs = await raw('GET', base + '/assets/js/evidence.js');
+    check(evjs.text.includes('MediaRecorder') && evjs.text.includes('indexedDB'), 'evidence module records and stores locally');
     const corejs = await raw('GET', base + '/assets/js/core.js');
     check(corejs.text.includes('/api/chat'), 'frontend is wired to the AI chat endpoint');
 

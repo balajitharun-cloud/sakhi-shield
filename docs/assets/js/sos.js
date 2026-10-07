@@ -222,6 +222,11 @@
                                    : 'Location unavailable - call 112 and describe your surroundings.';
 
     if (S.autoSend) await autoNotify(fix);
+
+    // Evidence: start recording automatically if the user enabled it.
+    if (SS.evidence && SS.evidence.startAutoRecord) {
+      try { await SS.evidence.startAutoRecord(); } catch (e) { /* optional */ }
+    }
   }
 
   /* ---------- automatic delivery to trusted contacts ---------- */
@@ -316,6 +321,7 @@
 
   function stopSos() {
     stopSiren(); stopFlash(); stopStreaming();
+    if (SS.evidence && SS.evidence.stopAutoRecord) SS.evidence.stopAutoRecord();
     if (smsCountdown) { clearInterval(smsCountdown); smsCountdown = null; }
     if (navigator.vibrate) navigator.vibrate(0);
     const overlay = $('#sosOverlay');
