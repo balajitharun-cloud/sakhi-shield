@@ -203,14 +203,18 @@
 
   const clearBtn = $('#reportClearBtn');
   if (clearBtn) clearBtn.addEventListener('click', () => {
+    // text inputs and textareas
     ['#cName2', '#cFather', '#cAge', '#cOccupation', '#cAddr', '#cPhone2', '#cDistrict',
      '#cStation', '#cWhen', '#cPlace', '#cDistance', '#cAct', '#cDelay', '#cPeople',
      '#cAccusedAddr', '#cWitness', '#cProperty', '#cInjury', '#cDesc']
       .forEach((s) => { const n = $(s); if (n) n.value = ''; });
+    // dropdowns go back to their first option - these were being missed
+    ['#cSex', '#cOffence', '#cAction', '#cPrev']
+      .forEach((s) => { const n = $(s); if (n) n.selectedIndex = 0; });
     if (decl) decl.checked = false;
     $('#sheetRef').value = ref();
     sync();
-    SS.toast('Cleared');
+    SS.toast('Form and sheet cleared', 'ok');
   });
 
   const cloudBtn = $('#reportCloudBtn');

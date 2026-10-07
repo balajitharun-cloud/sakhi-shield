@@ -137,6 +137,22 @@ async function main() {
     check(out.includes('FIRST INFORMATION REPORT') && out.includes('Tharun') && out.includes('MG Road'),
       'a plain-text version is generated alongside the sheet');
     check(out.includes('BRIEF FACTS OF THE CASE'), 'the plain-text version has the section headings');
+
+    // --- Clear must reset everything, including the dropdowns ---
+    doc.querySelector('#cOffence').selectedIndex = 3;
+    doc.querySelector('#cSex').selectedIndex = 1;
+    doc.querySelector('#cDeclare').checked = true;
+    const oldRef = doc.querySelector('#sheetRef').value;
+    doc.querySelector('#reportClearBtn').dispatchEvent(new win.Event('click', { bubbles: true }));
+
+    check(doc.querySelector('#cName2').value === '', 'Clear empties the text fields');
+    check(doc.querySelector('#fName').textContent === '\u2014', 'Clear resets the sheet back to blanks');
+    check(doc.querySelector('#cSex').selectedIndex === 0, 'Clear resets the Sex dropdown');
+    check(doc.querySelector('#cOffence').selectedIndex === 0, 'Clear resets the offence dropdown');
+    check(doc.querySelector('#fOffence').textContent === doc.querySelector('#cOffence').value,
+      'the sheet follows the reset dropdown');
+    check(doc.querySelector('#cDeclare').checked === false, 'Clear unticks the declaration');
+    check(doc.querySelector('#sheetRef').value !== oldRef, 'Clear issues a fresh reference number');
   }
   {
     const { doc } = await load('account.html');

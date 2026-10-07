@@ -9,7 +9,8 @@ services:
     name: sakhi-shield
     runtime: node
     plan: free
-    region: singapore          # closest Render region to India
+    # Region left to Render's default so the blueprint always applies. Pick a
+    # closer region in the dashboard afterwards if you want lower latency.
     buildCommand: npm install
     startCommand: npm start
     healthCheckPath: /api/health
