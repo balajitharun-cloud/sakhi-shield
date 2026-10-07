@@ -16,8 +16,11 @@ sakhi-shield/
 │   ├── db.js             SQLite schema and queries (better-sqlite3)
 │   ├── auth.js           bcrypt hashing + JWT bearer tokens
 │   ├── notify.js         email (nodemailer) + SMS (Twilio), with graceful fallback
+│   ├── chat.js           chatbot: LLM if configured, else a built-in knowledge base
 │   └── sharePage.js      the public live-location viewer page
-├── test/api.test.js      end-to-end API test (42 checks)
+├── test/
+│   ├── api.test.js       end-to-end API test (59 checks)
+│   └── i18n.test.js      front-end test: language switching, complaint sheet, chatbot
 ├── render.yaml           one-click Render blueprint
 └── .env.example          every config knob, documented
 ```
@@ -25,6 +28,9 @@ sakhi-shield/
 ## Features
 
 **Front-end (works offline, no server needed)**
+- Mobile-first: 44px touch targets, 16px inputs (no iOS zoom), safe-area insets, responsive complaint sheet
+- Three languages — English, हिंदी and ಕನ್ನಡ — with a switcher in the header; the whole UI, the tips, the rights and the chatbot are translated
+- **Sakhi Assistant chatbot** with a localised knowledge base that works with no server, plus an optional LLM behind `/api/chat`
 - SOS button with a 5-second cancellable countdown
 - Panic siren generated with the Web Audio API
 - Emergency helplines (India): 112, 100, 101, 102, 181, 1091, NCW, 1098, Tele-MANAS 14416, 1930
@@ -32,16 +38,20 @@ sakhi-shield/
 - Trusted contacts stored in localStorage
 - Fake call, check-in timer
 - Shake-to-SOS (device motion), vibration, screen flash
-- Safety tips, legal rights, incident-report generator
+- Safety tips and legal rights (India)
+- **Form SS-1 police complaint sheet** — a formal, numbered complaint form in the
+  style of an official report sheet, which generates a written complaint you can
+  hand to the police, email, or save
 
 **Backend (what the server adds)**
 - Accounts with hashed passwords and JWT login
-- Trusted contacts stored per user in a database
-- Incident reports stored per user
+- Trusted contacts and complaint sheets stored per user in a database
 - `POST /api/sos` creates an alert, **emails/SMSes your contacts**, and returns a
   public live-location link
 - A public viewer at `/s/<token>` that a contact opens in any browser — no app needed
 - Alert history you can resolve when you're safe
+- `POST /api/chat` answers safety questions (LLM if a key is set, built-in knowledge
+  base otherwise) in English, Hindi or Kannada
 
 > **On motion:** shake-to-SOS reads your phone's accelerometer through the
 > browser's `DeviceMotion` API. A server has no access to that sensor, so motion
@@ -83,6 +93,10 @@ All authenticated routes take `Authorization: Bearer <token>`.
 | GET  | `/api/reports` | yes | List incident reports |
 | POST | `/api/reports` | yes | `{happenedAt, place, people, description, lat, lng}` |
 | DELETE | `/api/reports/:id` | yes | Delete a report |
+| GET  | `/api/complaints` | yes | List saved complaint sheets |
+| POST | `/api/complaints` | yes | Save a Form SS-1 complaint sheet |
+| DELETE | `/api/complaints/:id` | yes | Delete a complaint sheet |
+| POST | `/api/chat` | no | `{message, lang}` → `{reply, source}` (LLM or knowledge base) |
 | POST | `/api/sos` | yes | `{lat, lng, accuracy, message}` → creates alert, notifies contacts, returns `shareUrl` |
 | GET  | `/api/alerts` | yes | Alert history |
 | POST | `/api/alerts/:id/location` | yes | Push a new GPS point to a live alert |
@@ -99,6 +113,8 @@ All authenticated routes take `Authorization: Bearer <token>`.
 3. Add your secrets in **Environment** if you want real alerts:
    - Email: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM`
    - SMS: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER`
+   - Chatbot: `LLM_API_KEY` (plus `LLM_PROVIDER` = `openai` or `groq`, `LLM_MODEL`).
+     With no key the chatbot still works from its built-in knowledge base.
 4. Your app is live at `https://<service-name>.onrender.com`.
 
 **Free-tier caveats:** the instance sleeps after ~15 minutes idle (first request

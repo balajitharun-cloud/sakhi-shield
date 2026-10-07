@@ -79,6 +79,30 @@ CREATE INDEX IF NOT EXISTS idx_contacts_user ON contacts(user_id);
 CREATE INDEX IF NOT EXISTS idx_reports_user  ON reports(user_id);
 CREATE INDEX IF NOT EXISTS idx_alerts_user   ON alerts(user_id);
 CREATE INDEX IF NOT EXISTS idx_locations_alert ON locations(alert_id);
+
+CREATE TABLE IF NOT EXISTS complaints (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id     INTEGER NOT NULL,
+  ref         TEXT,
+  offence     TEXT,
+  station     TEXT,
+  place       TEXT,
+  happened_at TEXT,
+  people      TEXT,
+  witnesses   TEXT,
+  injury      TEXT,
+  action      TEXT,
+  earlier     TEXT,
+  description TEXT,
+  text        TEXT,
+  declared    INTEGER NOT NULL DEFAULT 0,
+  lat         REAL,
+  lng         REAL,
+  created_at  TEXT    NOT NULL,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_complaints_user ON complaints(user_id);
 `);
 
 const now = () => new Date().toISOString();
@@ -140,6 +164,28 @@ const reports = {
   }
 };
 
+/* ---------- complaints (Form SS-1 police complaint sheets) ---------- */
+const complaints = {
+  list(userId) {
+    return db.prepare('SELECT * FROM complaints WHERE user_id = ? ORDER BY id DESC').all(userId);
+  },
+  create(userId, c) {
+    const info = db.prepare(
+      `INSERT INTO complaints
+        (user_id, ref, offence, station, place, happened_at, people, witnesses, injury,
+         action, earlier, description, text, declared, lat, lng, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).run(userId, c.ref || null, c.offence || null, c.station || null, c.place || null,
+          c.happenedAt || null, c.people || null, c.witnesses || null, c.injury || null,
+          c.action || null, c.earlier || null, c.description || null, c.text || null,
+          c.declared ? 1 : 0, c.lat ?? null, c.lng ?? null, now());
+    return db.prepare('SELECT * FROM complaints WHERE id = ?').get(info.lastInsertRowid);
+  },
+  remove(userId, id) {
+    return db.prepare('DELETE FROM complaints WHERE id = ? AND user_id = ?').run(id, userId).changes;
+  }
+};
+
 /* ---------- alerts + locations ---------- */
 const alerts = {
   create(userId, { lat, lng, accuracy, message, shareToken }) {
@@ -181,4 +227,4 @@ const alerts = {
   }
 };
 
-module.exports = { db, users, contacts, reports, alerts, DB_PATH };
+module.exports = { db, users, contacts, reports, alerts, complaints, DB_PATH };

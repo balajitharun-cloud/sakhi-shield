@@ -150,11 +150,54 @@ async function main() {
     r = await call('GET', `/api/public/share/${shareToken}`);
     check(r.data.alert.status === 'resolved', 'public share reflects the resolved status');
 
+    console.log('\nchat assistant');
+    r = await call('POST', '/api/chat', { message: 'How do I file an FIR?', lang: 'en' });
+    check(r.status === 200 && /FIR/.test(r.data.reply), 'chat answers an FIR question');
+    check(r.data.llm === false, 'reports no LLM configured');
+    check(r.data.source === 'kb', 'answer came from the built-in knowledge base');
+
+    r = await call('POST', '/api/chat', { message: 'I think I am being followed', lang: 'hi' });
+    check(r.status === 200 && r.data.reply.length > 0, 'chat answers in Hindi mode');
+    check(r.data.lang === 'hi', 'echoes the requested language');
+
+    r = await call('POST', '/api/chat', { message: 'zzzz nonsense qwerty', lang: 'en' });
+    check(r.status === 200 && r.data.source === 'fallback', 'unknown question falls back gracefully');
+
+    r = await call('POST', '/api/chat', {});
+    check(r.status === 400, 'chat rejects an empty message (400)');
+
+    r = await call('POST', '/api/chat', { message: 'emergency numbers' });
+    check(r.status === 200 && /112/.test(r.data.reply), 'chat works without a lang field');
+
+    console.log('\ncomplaint sheets');
+    r = await call('POST', '/api/complaints', {
+      ref: 'SS1/20261007/1234', offence: 'Stalking / following', station: 'MG Road',
+      place: 'MG Road bus stop', happenedAt: '2026-10-07T18:00',
+      description: 'Followed by an unknown man.', text: 'FORM SS-1 ...', declared: true,
+      lat: 12.97, lng: 77.59
+    }, token);
+    check(r.status === 201 && r.data.complaint.id > 0, 'save a complaint sheet');
+    check(r.data.complaint.declared === 1, 'declaration flag is stored');
+    const complaintId = r.data.complaint.id;
+
+    r = await call('GET', '/api/complaints', null, token);
+    check(r.status === 200 && r.data.complaints.length === 1, 'list complaint sheets');
+
+    r = await call('GET', '/api/complaints');
+    check(r.status === 401, 'complaints require auth (401)');
+
+    r = await call('DELETE', `/api/complaints/${complaintId}`, null, token);
+    check(r.status === 200, 'delete a complaint sheet');
+
     console.log('\nstatic frontend + isolation');
     const home = await raw('GET', base + '/');
     const homeHtml = home.text;
     check(home.status === 200 && homeHtml.includes('Sakhi Shield'), 'serves the frontend at /');
     check(homeHtml.includes('id="account"'), 'frontend includes the account section');
+    check(homeHtml.includes('data-lang="hi"') && homeHtml.includes('data-lang="kn"'), 'frontend has the EN/HI/KN switcher');
+    check(homeHtml.includes('const I18N ='), 'frontend ships the translation dictionary');
+    check(homeHtml.includes('chat-panel') && homeHtml.includes('chat-fab'), 'frontend has the chatbot');
+    check(homeHtml.includes('Form SS-1'), 'frontend has the police complaint sheet');
     check(homeHtml.includes('/api/sos'), 'frontend is wired to the SOS endpoint');
 
     // second user cannot see the first user's data

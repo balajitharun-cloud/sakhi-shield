@@ -10,7 +10,8 @@
   "scripts": {
     "start": "node server/index.js",
     "dev": "node --watch server/index.js",
-    "test": "node test/api.test.js"
+    "test": "node test/api.test.js",
+    "test:i18n": "node test/i18n.test.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -23,5 +24,8 @@
     "nodemailer": "^6.9.14",
     "twilio": "^5.2.2"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "jsdom": "^24.0.0"
+  }
 }

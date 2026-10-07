@@ -9,10 +9,11 @@ const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 
 const dbApi = require('./db');
-const { users, contacts, reports, alerts } = dbApi;
+const { users, contacts, reports, alerts, complaints } = dbApi;
 const auth = require('./auth');
 const { notifyContacts, emailConfigured, smsConfigured } = require('./notify');
 const { sharePage } = require('./sharePage');
+const chat = require('./chat');
 
 const app = express();
 app.set('trust proxy', 1); // Render terminates TLS in front of us
@@ -24,6 +25,7 @@ app.use(express.json({ limit: '256kb' }));
 
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 30, standardHeaders: true, legacyHeaders: false });
 const sosLimiter = rateLimit({ windowMs: 60 * 1000, max: 10, standardHeaders: true, legacyHeaders: false });
+const chatLimiter = rateLimit({ windowMs: 60 * 1000, max: 30, standardHeaders: true, legacyHeaders: false });
 
 /* ---------- helpers ---------- */
 const nowIso = () => new Date().toISOString();
@@ -135,6 +137,54 @@ app.delete('/api/reports/:id', auth.requireAuth, (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+/* ================= POLICE COMPLAINT SHEETS ================= */
+app.get('/api/complaints', auth.requireAuth, (req, res, next) => {
+  try { res.json({ complaints: complaints.list(req.user.id) }); } catch (e) { next(e); }
+});
+
+app.post('/api/complaints', auth.requireAuth, (req, res, next) => {
+  try {
+    const c = complaints.create(req.user.id, {
+      ref: clean(req.body.ref, 40),
+      offence: clean(req.body.offence, 120),
+      station: clean(req.body.station, 120),
+      place: clean(req.body.place, 200),
+      happenedAt: clean(req.body.happenedAt, 40),
+      people: clean(req.body.people, 300),
+      witnesses: clean(req.body.witnesses, 300),
+      injury: clean(req.body.injury, 300),
+      action: clean(req.body.action, 120),
+      earlier: clean(req.body.earlier, 10),
+      description: clean(req.body.description, 4000),
+      text: clean(req.body.text, 8000),
+      declared: Boolean(req.body.declared),
+      lat: Number.isFinite(req.body.lat) ? req.body.lat : null,
+      lng: Number.isFinite(req.body.lng) ? req.body.lng : null
+    });
+    res.status(201).json({ complaint: c });
+  } catch (e) { next(e); }
+});
+
+app.delete('/api/complaints/:id', auth.requireAuth, (req, res, next) => {
+  try {
+    const removed = complaints.remove(req.user.id, Number(req.params.id));
+    if (!removed) return res.status(404).json({ error: 'Complaint not found.' });
+    res.json({ ok: true });
+  } catch (e) { next(e); }
+});
+
+/* ================= CHAT ASSISTANT ================= */
+// Public (no login needed) so the assistant works before signing in.
+app.post('/api/chat', chatLimiter, async (req, res, next) => {
+  try {
+    const message = clean(req.body.message, 800);
+    const lang = ['en', 'hi', 'kn'].indexOf(req.body.lang) >= 0 ? req.body.lang : 'en';
+    if (!message) return res.status(400).json({ error: 'message is required.' });
+    const { reply, source } = await chat.answer(message, lang);
+    res.json({ reply, source, llm: chat.llmConfigured, lang });
+  } catch (e) { next(e); }
+});
+
 /* ================= SOS + LIVE SHARE ================= */
 app.post('/api/sos', sosLimiter, auth.requireAuth, async (req, res, next) => {
   try {
@@ -219,7 +269,7 @@ app.get('/api/health', (req, res) => {
     ok: true,
     service: 'sakhi-shield',
     time: nowIso(),
-    channels: { email: emailConfigured, sms: smsConfigured }
+    channels: { email: emailConfigured, sms: smsConfigured, llm: chat.llmConfigured }
   });
 });
 
