@@ -14,15 +14,27 @@ services:
     buildCommand: npm install
     startCommand: npm start
     healthCheckPath: /api/health
+    # The free plan has NO persistent disk, so the SQLite file and every upload
+    # are erased whenever the service restarts or redeploys. To keep data for
+    # real, upgrade the plan and uncomment this block - the app already reads
+    # DB_PATH, so uploads follow the database onto the disk automatically.
+    # disk:
+    #   name: sakhi-data
+    #   mountPath: /var/data
+    #   sizeGB: 1
     envVars:
       - key: NODE_ENV
         value: production
       - key: JWT_SECRET
         generateValue: true    # Render generates a strong random secret
+      # With a disk attached, change this to /var/data/sakhi.sqlite
       - key: DB_PATH
         value: ./data/sakhi.sqlite
+      # Only the GitHub Pages origin may call this API from a browser. Requests
+      # from the backend's own URL are same-origin and need no entry here.
+      # Add more origins comma-separated if you use a custom domain.
       - key: CORS_ORIGIN
-        value: "*"
+        value: "https://balajitharun-cloud.github.io,http://localhost:3000"
       # To actually send alerts, add these in the Render dashboard:
       #   SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, MAIL_FROM
       #   TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER

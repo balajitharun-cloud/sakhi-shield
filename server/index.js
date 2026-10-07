@@ -407,8 +407,8 @@ app.use((err, req, res, next) => { // eslint-disable-line no-unused-vars
 /* ---------- start ---------- */
 const PORT = process.env.PORT || 3000;
 if (require.main === module) {
-  app.listen(PORT, () => {
-    console.log(`Sakhi Shield backend listening on http://localhost:${PORT}`);
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Sakhi Shield backend listening on 0.0.0.0:${PORT}`);
     console.log(`  email alerts: ${emailConfigured ? 'configured' : 'not configured (logging only)'}`);
     console.log(`  sms alerts:   ${smsConfigured ? 'configured' : 'not configured (logging only)'}`);
   });
