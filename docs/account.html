@@ -66,7 +66,7 @@
           <button class="btn btn--sm" id="testServerBtn" type="button">Test connection</button>
           <button class="btn btn--sm" id="clearServerBtn" type="button">Clear</button>
         </div>
-        <p class="dim" style="font-size:.78rem;margin:12px 0 0" id="apiHint">Checking the backend…</p>
+        <p class="dim" style="font-size:.78rem;margin:12px 0 0" id="serverHint">Checking the backend…</p>
       </div>
       <div class="card">
         <div id="authForms">
@@ -87,6 +87,7 @@
               <label for="acctPass">Password</label>
               <input id="acctPass" type="password" autocomplete="current-password" maxlength="100" placeholder="At least 6 characters">
             </div>
+            <p class="dim" style="font-size:.76rem;margin:0 0 10px" id="passwordHint" hidden>Use at least 6 characters.</p>
             <button class="btn btn--accent btn--block" type="submit" id="authSubmit">Log in</button>
           </form>
           <p class="dim" style="font-size:.78rem;margin:12px 0 0" id="apiHint">Checking server…</p>
@@ -95,10 +96,10 @@
           <p style="margin-bottom:14px">Signed in as <b id="acctWho">—</b></p>
           <div class="row">
             <button class="btn" id="syncContactsBtn">Sync contacts →</button>
-            <button class="btn" id="loadAlertsBtn">Refresh alerts</button>
             <button class="btn btn--sm" id="logoutBtn">Log out</button>
           </div>
-          <div class="hl-list" id="alertList" style="margin-top:16px"></div>
+          <p class="dim" style="font-size:.78rem;margin:14px 0 0" id="acctCount"></p>
+          <p style="margin-top:10px"><a class="btn btn--sm" href="sos.html">View your alerts &rarr;</a></p>
         </div>
       </div>
       <div class="card">

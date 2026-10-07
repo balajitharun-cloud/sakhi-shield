@@ -139,6 +139,20 @@ async function main() {
     check(!!doc.querySelector('#tgAutoRecord'), 'evidence page has the auto-record toggle');
   }
   {
+    const { doc } = await load('account.html');
+    const ids = Array.from(doc.querySelectorAll('[id]')).map((n) => n.id);
+    const dupes = ids.filter((v, i) => ids.indexOf(v) !== i);
+    check(dupes.length === 0, 'account page has no duplicate element ids' + (dupes.length ? ': ' + dupes.join(', ') : ''));
+    check(!!doc.querySelector('#serverHint') && !!doc.querySelector('#passwordHint') && !!doc.querySelector('#acctCount'),
+      'account page has the new status elements');
+  }
+  {
+    const core = fs.readFileSync(path.join(DIR, 'assets/js/core.js'), 'utf8');
+    const data = fs.readFileSync(path.join(DIR, 'assets/js/data.js'), 'utf8');
+    check(core.includes('/api/chat'), 'chatbot calls the AI endpoint');
+    check(!core.includes('localAnswer') && !data.includes('CHAT_INTENTS'), 'the old canned-answer chatbot is gone');
+  }
+  {
     const { doc } = await load('index.html');
     check(doc.querySelectorAll('#hub .link-card').length === 10, 'home page links to all 10 feature pages');
   }

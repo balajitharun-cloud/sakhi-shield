@@ -227,14 +227,9 @@
      ============================================================ */
   const D = window.SS_DATA || {};
   const CHIPS = D.CHIPS_EN || [];
-  const INTENTS = D.CHAT_INTENTS || [];
 
-  SS.localAnswer = function (msg) {
-    const q = String(msg).toLowerCase();
-    const hit = INTENTS.find((i) => i.k.some((k) => q.indexOf(k) >= 0));
-    return hit ? hit.a : null;
-  };
-
+  // The assistant is AI-only: every question goes to the backend, which is
+  // backed by a live AI provider. There is no local canned-answer fallback.
   async function askServer(msg) {
     try {
       const r = await SS.api('/api/chat', { method: 'POST', body: { message: msg, lang: LANG } });
@@ -289,10 +284,11 @@
     const thinking = addMsg('Thinking\u2026', 'bot');
     if (thinking) thinking.classList.add('msg--typing');
 
-    // Ask the AI-backed server first; fall back to the local knowledge base.
+    // AI only - ask the backend. If it is unreachable, say so plainly.
     let answer = await askServer(msg);
-    if (!answer) answer = SS.localAnswer(msg);
-    if (!answer) answer = D.FALLBACK_ANSWER || 'Sorry, I could not answer that.';
+    if (!answer) {
+      answer = 'I could not reach the AI service just now. Check the backend URL on the Account page, or try again in a moment.';
+    }
     if (thinking) thinking.remove();
     addMsg(answer, 'bot');
   };

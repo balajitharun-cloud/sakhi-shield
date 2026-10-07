@@ -153,27 +153,26 @@ async function main() {
     r = await call('GET', `/api/public/share/${shareToken}`);
     check(r.data.alert.status === 'resolved', 'public share reflects the resolved status');
 
-    console.log('\nchat assistant');
+    console.log('\nchat assistant (AI only)');
     const chatMod = require('../server/chat.js');
     check(Object.keys(chatMod.PROVIDERS).length >= 6, 'chat supports multiple AI providers');
     check('pollinations' in chatMod.PROVIDERS && 'openai' in chatMod.PROVIDERS, 'includes a keyless provider and OpenAI');
+    check(!('KB' in chatMod), 'the old keyword knowledge base has been removed');
+
     r = await call('POST', '/api/chat', { message: 'How do I file an FIR?', lang: 'en' });
-    check(r.status === 200 && /FIR/.test(r.data.reply), 'chat answers an FIR question');
+    check(r.status === 200 && typeof r.data.reply === 'string' && r.data.reply.length > 0, 'chat always returns a reply');
     check(r.data.llm === false, 'reports the AI provider as off in this test run');
-    check(r.data.source === 'kb', 'answer came from the built-in knowledge base');
+    check(r.data.source === 'unavailable', 'says so plainly when the AI provider is off');
 
     r = await call('POST', '/api/chat', { message: 'I think I am being followed', lang: 'hi' });
     check(r.status === 200 && r.data.reply.length > 0, 'chat answers in Hindi mode');
     check(r.data.lang === 'hi', 'echoes the requested language');
 
-    r = await call('POST', '/api/chat', { message: 'zzzz nonsense qwerty', lang: 'en' });
-    check(r.status === 200 && r.data.source === 'fallback', 'unknown question falls back gracefully');
-
     r = await call('POST', '/api/chat', {});
     check(r.status === 400, 'chat rejects an empty message (400)');
 
     r = await call('POST', '/api/chat', { message: 'emergency numbers' });
-    check(r.status === 200 && /112/.test(r.data.reply), 'chat works without a lang field');
+    check(r.status === 200 && r.data.lang === 'en', 'chat defaults to English without a lang field');
 
     console.log('\ncomplaint sheets');
     r = await call('POST', '/api/complaints', {
@@ -217,6 +216,10 @@ async function main() {
     check(comp.text.includes('Form SS-1'), 'complaint page has the police complaint sheet');
     const acct = await raw('GET', base + '/account.html');
     check(acct.text.includes('id="serverUrl"'), 'account page has the backend URL field');
+    check((acct.text.match(/id="apiHint"/g) || []).length === 1, 'account page has exactly one auth-status element (was duplicated)');
+    check(acct.text.includes('id="serverHint"'), 'account page has a separate backend-status element');
+    check(acct.text.includes('id="passwordHint"'), 'account page has the password hint');
+    check(!acct.text.includes('loadAlertsBtn'), 'account page no longer has the dead alert-list button');
     const sosjs = await raw('GET', base + '/assets/js/sos.js');
     check(sosjs.text.includes('/api/sos'), 'frontend is wired to the SOS endpoint');
     check(sosjs.text.includes('requestPermission'), 'frontend requests motion-sensor permission');

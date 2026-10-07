@@ -39,11 +39,11 @@ sakhi-shield/
 │   ├── db.js             SQLite schema and queries (better-sqlite3)
 │   ├── auth.js           bcrypt hashing + JWT bearer tokens
 │   ├── notify.js         email (nodemailer) + SMS (Twilio), with graceful fallback
-│   ├── chat.js           AI chat: 6 providers, or a built-in knowledge base
+│   ├── chat.js           AI chat: 6 providers, no canned answers
 │   └── sharePage.js      the public live-location viewer page
 ├── test/
-│   ├── api.test.js       end-to-end API test (69 checks)
-│   └── i18n.test.js      front-end test across all 11 pages (55 checks)
+│   ├── api.test.js       end-to-end API test (73 checks)
+│   └── i18n.test.js      front-end test across all 11 pages (59 checks)
 ├── render.yaml           one-click Render blueprint
 └── .env.example          every config knob, documented
 ```
@@ -54,7 +54,7 @@ sakhi-shield/
 - **One page per feature** - home, SOS, helplines, location, contacts, tools, evidence, safety, rights, complaint and account
 - Mobile-first: 44px touch targets, 16px inputs (no iOS zoom), safe-area insets, responsive complaint sheet
 - Three languages - English, हिंदी and ಕನ್ನಡ - with a switcher in the header; the whole UI, the tips, the rights and the chatbot are translated
-- **Sakhi Assistant chatbot** backed by a live AI API, with a localised knowledge base as the offline fallback
+- **Sakhi Assistant chatbot** - AI only. Every question goes to the backend, which calls a live AI provider (see below). There is no canned keyword-answer fallback; if the AI service is unreachable the assistant says so.
 - **SOS with automatic delivery**: arming it sends your live location to your trusted contacts by itself - no extra tap
 - **Motion sensor**: shake the phone to arm the SOS, with a proper iOS permission request and a sensitivity setting
 - **Camera & recording** - take a photo, or record audio/video as proof. Everything is geo-tagged, timestamped and stored in an on-device vault (IndexedDB); download anything you need for the police. Can auto-start recording when the SOS fires.
@@ -140,7 +140,13 @@ All authenticated routes take `Authorization: Bearer <token>`.
    - SMS: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER`
    - Chatbot: the AI provider. The default `pollinations` is a free public
      endpoint needing no key; `openai`/`groq`/`openrouter`/`anthropic`/`gemini`
-     need `LLM_API_KEY`; `off` uses only the built-in knowledge base.
+     need `LLM_API_KEY`; `off` disables the assistant.
+
+     **The assistant is AI only - there is no offline fallback.** The free
+     `pollinations` endpoint is the only keyless option and it is frequently
+     busy or down (it has been returning 402/500), so for anything real you
+     should set your own key. Groq and Google AI Studio both have free tiers;
+     set `LLM_PROVIDER=groq` and `LLM_API_KEY=...`.
 4. Your app is live at `https://<service-name>.onrender.com`.
 
 **Free-tier caveats:** the instance sleeps after ~15 minutes idle (first request
